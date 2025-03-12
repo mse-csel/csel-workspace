@@ -1,8 +1,18 @@
 # Workspace for CSEL
 
 > :warning: **Open this project in a Docker Container**
+## Info ajoutée 
+Flash SD card
+sudo dd if=sdcard.img of=/dev/sda bs=2M
+-> script flash.sh
+
+Copie carte SD
+rsync -rlt --progress --delete /buildroot/output/images/ /workspace/buildroot-images
+
+IP du PC
 
 ## Cheat Sheet for developers
+
 
 Configure with the default settings:
 
