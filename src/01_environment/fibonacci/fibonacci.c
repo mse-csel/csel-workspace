@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 
     printf("%s, %d, %s, %s\n", __FILE__, __LINE__, __DATE__, __TIME__);
     printf("The first %ld Fibonacci numbers are:\n", n);
-
+    printf("New line");
     for (i = 0; i < n; i++)
     {
         printf("%ld%s", fibonacci_i(i), i < n-1 ? ", " : "");
