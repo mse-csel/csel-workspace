@@ -12,6 +12,11 @@ TOOLS := /buildroot/output/host/usr/bin/aarch64-linux-
 PWD := $(shell pwd)
 # CC := /buildroot/output/host/usr/bin/aarch64-linux-gnu-gcc.br_real
 
+MODPATH := /rootfs # production mode
+
+
+install:
+	$(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(MODPATH) modules_install
 
 all:
 	$(MAKE) -C $(KDIR) M=$(PWD) ARCH=$(CPU) CROSS_COMPILE=$(TOOLS) modules
