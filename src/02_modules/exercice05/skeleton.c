@@ -25,9 +25,9 @@ static int __init skeleton_init(void)
 	pr_info ("Linux module 05 skeleton loaded\n");
 
 	res[0] = request_mem_region (0x01c14000, 0x1000, "allwiner h5 sid");
-	//res[1] = request_mem_region (0x01C25000, 0x1000, "allwiner h5 ths");
-	//res[2] = request_mem_region (0x01C30000, 0x1000, "allwiner h5 emac");
-	if ((res[0] == 0))// || (res[1] == 0) ||(res[2] == 0))
+	res[1] = request_mem_region (0x01C25000, 0x1000, "allwiner h5 ths");
+	res[2] = request_mem_region (0x01C30000, 0x1000, "allwiner h5 emac");
+	if ((res[0] == 0)) || (res[1] == 0) ||(res[2] == 0))
 		pr_info ("Error while reserving memory region... [0]=%d, [1]=%d, [2]=%d\n",	res[0]==0, res[1]==0, res[2]==0);
 
 	regs[0] = ioremap (0x01c14000, 0x1000);
@@ -38,6 +38,7 @@ static int __init skeleton_init(void)
 		pr_info ("Error while trying to map processor register...\n");
 		return -EFAULT;
 	}
+	// Starts at the right address and read each 4 bytes (registers)
 	chipid[0] = ioread32 (regs[0]+0x200);
 	chipid[1] = ioread32 (regs[0]+0x204);
 	chipid[2] = ioread32 (regs[0]+0x208);
@@ -70,8 +71,8 @@ static void __exit skeleton_exit(void)
 {
 	pr_info ("Linux module skeleton unloaded\n");
     if (res[0] != 0) release_mem_region (0x01c14000, 0x1000);
-	//release_mem_region (0x01C25000, 0x1000);
-	//release_mem_region (0x01C30000, 0x1000);
+	if (res[1] != 0) release_mem_region (0x01C25000, 0x1000);
+	if (res[1] != 0) release_mem_region (0x01C30000, 0x1000);
 }
 
 module_init (skeleton_init);
