@@ -96,11 +96,11 @@ static struct file_operations skeleton_fops = {
 
 static int __init skeleton_init(void)
 {
-    int status = alloc_chrdev_region(&skeleton_dev, 0, 1, "mymodule");
+    int status = alloc_chrdev_region(&skeleton_dev, 0, 10, "mymodule");
     if (status == 0) {
         cdev_init(&skeleton_cdev, &skeleton_fops);
         skeleton_cdev.owner = THIS_MODULE;
-        status              = cdev_add(&skeleton_cdev, skeleton_dev, 1);
+        status              = cdev_add(&skeleton_cdev, skeleton_dev, 10);
     }
 
     pr_info("Linux module skeleton loaded\n");
@@ -110,7 +110,7 @@ static int __init skeleton_init(void)
 static void __exit skeleton_exit(void)
 {
     cdev_del(&skeleton_cdev);
-    unregister_chrdev_region(skeleton_dev, 1);
+    unregister_chrdev_region(skeleton_dev, 10);
 
     pr_info("Linux module skeleton unloaded\n");
 }
