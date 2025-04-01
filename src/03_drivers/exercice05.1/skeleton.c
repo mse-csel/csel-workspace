@@ -11,8 +11,8 @@
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h> /* needed for sysfs handling */
 
-//#define MISC
-//#define PLATFORM
+// #define MISC
+// #define PLATFORM
 #define CLASS
 
 struct skeleton_config {
@@ -152,8 +152,8 @@ static struct file_operations skeleton_fops = {
 
 #ifdef MISC
 static struct miscdevice misc_device = {
-    .minor = MISC_DYNAMIC_MINOR,
-    .fops  = &fops
+    .minor = MISC_DYNAMIC_MINOR, // Dynamically allocate a minor number
+    .fops  = &skeleton_fops,
     .name  = "my_misc_module",
     .mode  = 0,
 };
@@ -229,7 +229,7 @@ static void __exit skeleton_exit(void)
 #ifdef CLASS
     device_remove_file(sysfs_device, &dev_attr_val);
     device_remove_file(sysfs_device, &dev_attr_cfg);
-    device_destroy(sysfs_class, 0);
+    device_destroy(sysfs_class, skeleton_dev);
     class_destroy(sysfs_class);
 #endif
 
