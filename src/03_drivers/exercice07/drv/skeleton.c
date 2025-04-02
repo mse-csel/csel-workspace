@@ -17,6 +17,9 @@
 #include <linux/ioport.h>    /* needed for memory region handling */
 #include <linux/miscdevice.h>
 
+#include <linux/fcntl.h> /* needed for file control */
+#include <linux/unistd.h> /* needed for standard definitions */
+
 #define K1 0
 #define K2 2
 #define K3 3
@@ -34,6 +37,8 @@ irqreturn_t gpio_isr(int irq, void* handle)
     wake_up_interruptible(&queue);
 
     pr_info("interrupt %s raised...\n", (char*)handle);
+    pr_info("Nb interrupts = %d\n", atomic_read(&nb_of_interrupts));
+
 
     return IRQ_HANDLED;
 }
@@ -42,18 +47,28 @@ static ssize_t skeleton_read(struct file* f,
                              char __user* buf,
                              size_t sz,
                              loff_t* off)
-{
-    return 0;
+{   
+    ssize_t count;
+    pr_info("Reading from user space...\n");
+    count = (int)atomic_read(&nb_of_interrupts);
+    if (copy_to_user(buf, &count, sizeof(count))) {
+        return -EFAULT;
+    }
+    pr_info("count = %ld\n", count);
+    return count;
 }
+
 
 static unsigned int skeleton_poll(struct file* f, poll_table* wait)
 {
     unsigned mask = 0;
+    pr_info("polling thread waiting...\n");
     poll_wait(f, &queue, wait);
+    
     if (atomic_read(&nb_of_interrupts) != 0) {
-        mask |= POLLIN | POLLRDNORM; /* read operation */
-        /* mask |= POLLOUT | POLLWRNORM;   write operation */
-        atomic_dec(&nb_of_interrupts);
+        mask |= POLLIN | POLLRDNORM; // read operation 
+        // mask |= POLLOUT | POLLWRNORM;   write operation 
+        //atomic_dec(&nb_of_interrupts);
         pr_info("polling thread waked-up...\n");
     }
     return mask;

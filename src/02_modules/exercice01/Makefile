@@ -1,3 +1,6 @@
+
+
+
 # Part executed when called from kernel build system
 ifneq ($(KERNELRELEASE),)
 obj-m += mymodule.o          ## name of the generated module
@@ -6,6 +9,9 @@ CFLAGS_skeleton := -DDEBUG   ## to enable printing of debugging messages
 
 # Part executed when called from standard make in the module source directory
 else
+include ../../kernel_settings
+include ../../buildroot_path
+
 CPU := arm64
 KDIR := /buildroot/output/build/linux-5.15.148/
 TOOLS := /buildroot/output/host/usr/bin/aarch64-linux-

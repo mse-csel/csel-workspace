@@ -26,6 +26,28 @@ int main()
     /* map to user space nanopi internal registers */
     volatile uint32_t* regs =
         mmap(0, psz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+        
+    printf("regs=%p\n", regs);
+
+    volatile uint32_t* regss = mmap(0, psz, 
+        PROT_READ | PROT_WRITE, MAP_SHARED, fd, dev_addr);
+    printf("regss=%p\n", regss);
+
+    uint32_t chipideux[4] = {
+        [0] = *(regss + (0x00 / sizeof(uint32_t))),
+        [1] = *(regss + (0x04 / sizeof(uint32_t))),
+        [2] = *(regss + (0x08 / sizeof(uint32_t))),
+        [3] = *(regss + (0x0c / sizeof(uint32_t))),
+    };
+
+    printf("NanoPi NEO Plus2 chipid=%08x'%08x'%08x'%08x\n",
+        chipideux[0],
+        chipideux[1],
+        chipideux[2],
+        chipideux[3]);
+
+   
+
 
     if (regs == MAP_FAILED)  // (void *)-1
     {
@@ -38,7 +60,7 @@ int main()
         [1] = *(regs + (ofs + 0x04) / sizeof(uint32_t)),
         [2] = *(regs + (ofs + 0x08) / sizeof(uint32_t)),
         [3] = *(regs + (ofs + 0x0c) / sizeof(uint32_t)),
-    };
+    };  
 
     printf("NanoPi NEO Plus2 chipid=%08x'%08x'%08x'%08x\n",
            chipid[0],

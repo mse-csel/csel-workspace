@@ -11,14 +11,15 @@
 #define K2	2
 #define K3	3
 
-static char* k1="gpio_a.0-k1";
-static char* k2="gpio_a.2-k2";
-static char* k3="gpio_a.3-k3";
+static char* k1="k1 gpio A0";
+static char* k2="k2 gpio A2";
+static char* k3="k3 gpio A3";
 
 
 irqreturn_t gpio_isr(int irq, void* handle)
 {
-	pr_info ("interrupt %s raised...\n", (char*)handle);
+	pr_info ("switch %s is pressed raising interrupt...\n",
+		 (char*)handle);
 
 	return IRQ_HANDLED;
 }

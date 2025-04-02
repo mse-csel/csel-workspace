@@ -11,8 +11,8 @@
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h> /* needed for sysfs handling */
 
-//#define MISC
-//#define PLATFORM
+#define MISC
+#define PLATFORM
 #define CLASS
 
 struct skeleton_config {
@@ -24,6 +24,7 @@ struct skeleton_config {
 
 static struct skeleton_config config;
 static int val;
+static int orange;
 
 ssize_t sysfs_show_val(struct device* dev,
                        struct device_attribute* attr,
@@ -41,6 +42,24 @@ ssize_t sysfs_store_val(struct device* dev,
     return count;
 }
 DEVICE_ATTR(val, 0664, sysfs_show_val, sysfs_store_val);
+
+
+ssize_t sysfs_show_orange(struct device* dev,
+    struct device_attribute* attr,
+    char* buf)
+{
+    sprintf(buf, "%d\n", orange);
+    return strlen(buf);
+}
+ssize_t sysfs_store_orange(struct device* dev,
+     struct device_attribute* attr,
+     const char* buf,
+     size_t count)
+{
+    orange = simple_strtol(buf, 0, 10);
+    return count;
+}
+DEVICE_ATTR(orange, 0664, sysfs_show_orange, sysfs_store_orange);
 
 ssize_t sysfs_show_cfg(struct device* dev,
                        struct device_attribute* attr,
@@ -117,6 +136,7 @@ static int __init skeleton_init(void)
     sysfs_device = device_create(sysfs_class, NULL, 0, NULL, "my_sysfs_device");
     if (status == 0) status = device_create_file(sysfs_device, &dev_attr_val);
  	if (status == 0) status = device_create_file(sysfs_device, &dev_attr_cfg);
+    if (status == 0) status = device_create_file(sysfs_device, &dev_attr_orange);
 #endif
 
     pr_info("Linux module skeleton loaded\n");
@@ -138,6 +158,7 @@ static void __exit skeleton_exit(void)
 #ifdef CLASS
     device_remove_file(sysfs_device, &dev_attr_val);
     device_remove_file(sysfs_device, &dev_attr_cfg);
+    device_remove_file(sysfs_device, &dev_attr_orange);
     device_destroy(sysfs_class, 0);
     class_destroy(sysfs_class);
 #endif

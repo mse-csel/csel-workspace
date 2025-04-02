@@ -24,7 +24,7 @@ static int skeleton_thread_1 (void* data)
 			pr_info ("skeleton thread_1 has been interrupted\n");
 			break;
 		}
-		atomic_dec (&is_kicked);
+		atomic_dec (&is_kicked); //decrement atomic variable
 		pr_info ("skeleton thread_1 has been kicked\n");
 	}
 	return 0;
