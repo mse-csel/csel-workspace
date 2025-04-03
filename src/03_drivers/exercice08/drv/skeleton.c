@@ -19,7 +19,7 @@ static int skeleton_mmap(struct file* f, struct vm_area_struct* vma)
 
     if (size > PAGE_SIZE) status = -EINVAL;
 
-    vma->vm_pgoff = 0x01c14000 >> PAGE_SHIFT;
+    vma->vm_pgoff = 0x01c14200 >> 8;
 
     if (status == 0)
         status = remap_pfn_range(

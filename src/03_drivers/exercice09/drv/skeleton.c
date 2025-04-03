@@ -47,8 +47,12 @@ static long skeleton_ioctl(struct file* f, unsigned int cmd, unsigned long arg)
             break;
 
         case SKELETON_IO_RD_VAL:
-            status = val;
-            pr_info("skeleton-ioctl: read value=%d\n", status);
+            if (copy_to_user((int __user *)arg, &val, sizeof(val))) {
+                status = -EFAULT;
+            } else {
+                pr_info("skeleton-ioctl: read value=%d\n", val);
+                status = 0;
+            }
             break;
 
         default:
