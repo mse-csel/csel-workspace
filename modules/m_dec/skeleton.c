@@ -20,9 +20,9 @@ module_param(prime_list, charp, 0);
 
 #define             BUFFER_MAX_SZ 1000
 static const char*  READ_FORMAT = "current computation state : \
-    p= %d, current tmd_2 = %d, current n = %d, current computation time %llu\n";
-static const char*  SAVE_FORMAT = "%d %d %d\n";   //p, current t, current n, current computation time
-static const char*  REPORT_FORMAT = "%d: %d\n"; //p: t - computation time
+    p= %d, current t = %d, current n = %d, current computation time %llu\n";
+static const char*  SAVE_FORMAT = "%d %d %d %d";   //p, current t, current n, next_is_add, current computation time
+static const char*  REPORT_FORMAT = "%d: %d is_opti : %d\n"; //p: t - computation time
 static struct task_struct* compute_thread;
 
 //--- utils
@@ -42,6 +42,9 @@ int snprintf(char *buf, size_t size, const char *fmt, ...){
 static int current_p = 0;
 static int current_t = 0;
 static int current_n = 0;
+static int next_is_add = false;
+static int currently_processing = true;
+static int current_is_optimal;
 
 static void retrieve_computation_state(void){
     struct file* file;
@@ -52,8 +55,14 @@ static void retrieve_computation_state(void){
         memset(data, 0, sizeof(data));
         file->f_pos=0;
         len = kernel_read(file, data, sizeof(data), &file->f_pos);
-        pr_info("read : %s\n", data);
-        sscanf(data, SAVE_FORMAT, &current_p, &current_t, &current_n);
+        len = sscanf(data, SAVE_FORMAT, &current_p, &current_t, &current_n, &next_is_add);
+        if(0 == len){
+            current_p = 3;
+            current_t = 1;
+            current_n = 1;
+            next_is_add = false;
+            currently_processing = false;
+        }else{}
         filp_close(file, NULL);
     }else{}
     return;
@@ -65,7 +74,7 @@ static void save_computation_state(void){
     char data[BUFFER_MAX_SZ];
     file = filp_open(prime_compute_file, O_RDWR | O_CREAT, 0644);
     if(file){   //file properly open
-        len = snprintf(data, BUFFER_MAX_SZ, SAVE_FORMAT, current_p, current_t, current_n);
+        len = snprintf(data, BUFFER_MAX_SZ, SAVE_FORMAT, current_p, current_t, current_n, next_is_add);
         len = kernel_write(file, data, len, &file->f_pos);
         filp_close(file, NULL);
     }else{}
@@ -78,20 +87,40 @@ static void report_computation(void){
     char data[BUFFER_MAX_SZ];
     file = filp_open(prime_list, O_RDWR | O_APPEND | O_CREAT, 0644);
     if(file){
-        len = snprintf(data, BUFFER_MAX_SZ, REPORT_FORMAT, current_p, current_t);
-        pr_info("trying to print %s", data);
+        len = snprintf(data, BUFFER_MAX_SZ, REPORT_FORMAT, current_p, current_t, current_is_optimal);
         len = kernel_write(file, data, len, &file->f_pos);
         filp_close(file, NULL);
     }else{}
     return;
 }
 
+void execute_computation(void){
+    int minus_p = -current_p;
+    if(!currently_processing){
+        current_n = (current_p/2)+1;
+    }else{
+        currently_processing = false;
+    }
+    while(current_n != 1 && current_n != -1){
+        if((current_n&0x1) == 0x1){
+            current_n += (next_is_add ? current_p : minus_p);
+            next_is_add = !next_is_add;
+        }else{}
+        current_n >>= 1;
+        current_t += 1;
+    }
+    current_is_optimal = (current_n == -1);
+    current_t *= (current_is_optimal ? 2 : 1);
+    return;
+}
+
 static int thread_func(void* data){
     pr_info("starting thread");
     while(!kthread_should_stop()){
-        ssleep(5);
-        pr_info("kicking");
+        execute_computation();
         report_computation();
+        current_p += 2;
+        current_t = 1;
     }
     save_computation_state();
     return 0;
@@ -123,7 +152,15 @@ static ssize_t skeleton_read(
     if (count > remaining) count = remaining;                                                                           
     *off += count;
 
-    nb_char = snprintf(tmp_str, BUFFER_MAX_SZ, READ_FORMAT, 7, 3, 1, (unsigned long long)0x142857);
+    nb_char = snprintf(
+        tmp_str, 
+        BUFFER_MAX_SZ, 
+        READ_FORMAT, 
+        current_p, 
+        current_t, 
+        current_n, 
+        (unsigned long long)0x142857
+    );
 
     if(0 != copy_to_user(buf, ptr, count)){
         nb_char = -EFAULT;
