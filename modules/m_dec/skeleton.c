@@ -7,7 +7,7 @@
 #include <linux/fs.h>           // driver
 #include <linux/uaccess.h>      // copy data to/from the user
 #include <linux/kthread.h>      // thread
-#include <linux/delay.h>        // delay [temporary]
+#include <linux/ktime.h>        // chronometer
 
 //--- arguments
 static char* prime_compute_file = "/opt/.prime_computation";
@@ -21,8 +21,8 @@ module_param(prime_list, charp, 0);
 #define             BUFFER_MAX_SZ 1000
 static const char*  READ_FORMAT = "current computation state : \
     p= %d, current t = %d, current n = %d, current computation time %llu\n";
-static const char*  SAVE_FORMAT = "%d %d %d %d";   //p, current t, current n, next_is_add, current computation time
-static const char*  REPORT_FORMAT = "%d: %d is_opti : %d\n"; //p: t - computation time
+static const char*  SAVE_FORMAT = "%d %d %d %d %lld";   //p, current t, current n, next_is_add, current computation time
+static const char*  REPORT_FORMAT = "%d: %d [opti : %d] | %lld\n"; //p: t [is_optimal] | computation time
 static struct task_struct* compute_thread;
 
 //--- utils
@@ -38,13 +38,15 @@ int snprintf(char *buf, size_t size, const char *fmt, ...){
 }
 
 //--- m_dec functions and values
+// chronometer inspired from https://stackoverflow.com/a/69752373
 
 static int current_p = 0;
 static int current_t = 0;
 static int current_n = 0;
 static int next_is_add = false;
-static int currently_processing = true;
+static int retrieved_process = true;
 static int current_is_optimal;
+static ktime_t retrieved_computation_time = 0;
 
 static void retrieve_computation_state(void){
     struct file* file;
@@ -55,13 +57,14 @@ static void retrieve_computation_state(void){
         memset(data, 0, sizeof(data));
         file->f_pos=0;
         len = kernel_read(file, data, sizeof(data), &file->f_pos);
-        len = sscanf(data, SAVE_FORMAT, &current_p, &current_t, &current_n, &next_is_add);
+        len = sscanf(data, SAVE_FORMAT, &current_p, &current_t, &current_n, &next_is_add, &retrieved_computation_time);
         if(0 == len){
             current_p = 3;
             current_t = 1;
             current_n = 1;
             next_is_add = false;
-            currently_processing = false;
+            retrieved_process = false;
+            retrieved_computation_time = 0;
         }else{}
         filp_close(file, NULL);
     }else{}
@@ -74,20 +77,37 @@ static void save_computation_state(void){
     char data[BUFFER_MAX_SZ];
     file = filp_open(prime_compute_file, O_RDWR | O_CREAT, 0644);
     if(file){   //file properly open
-        len = snprintf(data, BUFFER_MAX_SZ, SAVE_FORMAT, current_p, current_t, current_n, next_is_add);
+        len = snprintf(
+            data, 
+            BUFFER_MAX_SZ, 
+            SAVE_FORMAT, 
+            current_p, 
+            current_t, 
+            current_n, 
+            next_is_add,
+            retrieved_computation_time
+        );
         len = kernel_write(file, data, len, &file->f_pos);
         filp_close(file, NULL);
     }else{}
     return;
 }
 
-static void report_computation(void){
+static void report_computation(ktime_t elapsed_time){
     struct file* file;
     ssize_t len;
     char data[BUFFER_MAX_SZ];
     file = filp_open(prime_list, O_RDWR | O_APPEND | O_CREAT, 0644);
     if(file){
-        len = snprintf(data, BUFFER_MAX_SZ, REPORT_FORMAT, current_p, current_t, current_is_optimal);
+        len = snprintf(
+            data, 
+            BUFFER_MAX_SZ, 
+            REPORT_FORMAT, 
+            current_p, 
+            current_t, 
+            current_is_optimal,
+            ktime_to_ns(elapsed_time)
+        );
         len = kernel_write(file, data, len, &file->f_pos);
         filp_close(file, NULL);
     }else{}
@@ -96,10 +116,11 @@ static void report_computation(void){
 
 void execute_computation(void){
     int minus_p = -current_p;
-    if(!currently_processing){
+    if(!retrieved_process){
+        retrieved_computation_time = 0;
         current_n = (current_p/2)+1;
     }else{
-        currently_processing = false;
+        retrieved_process = false;
     }
     while((current_n != 1 && current_n != -1) && !kthread_should_stop()){
         if((current_n&0x1) == 0x1){
@@ -117,14 +138,20 @@ void execute_computation(void){
 }
 
 static int thread_func(void* data){
-    pr_info("starting thread");
+    ktime_t start_time, stop_time, elapsed_time;
     while(!kthread_should_stop()){
+        start_time = ktime_get();
         execute_computation();
+        stop_time = ktime_get();
+        elapsed_time = ktime_sub(stop_time, start_time);
+        elapsed_time = ktime_add(elapsed_time, retrieved_computation_time);
         if(!kthread_should_stop()){
-            report_computation();
+            report_computation(elapsed_time);
             current_p += 2;
             current_t = 1;
-        }else{}
+        }else{
+            retrieved_computation_time = elapsed_time;
+        }
     }
     save_computation_state();
     return 0;
