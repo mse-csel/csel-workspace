@@ -101,7 +101,7 @@ void execute_computation(void){
     }else{
         currently_processing = false;
     }
-    while(current_n != 1 && current_n != -1){
+    while((current_n != 1 && current_n != -1) && !kthread_should_stop()){
         if((current_n&0x1) == 0x1){
             current_n += (next_is_add ? current_p : minus_p);
             next_is_add = !next_is_add;
@@ -109,8 +109,10 @@ void execute_computation(void){
         current_n >>= 1;
         current_t += 1;
     }
-    current_is_optimal = (current_n == -1);
-    current_t *= (current_is_optimal ? 2 : 1);
+    if(!kthread_should_stop()){
+        current_is_optimal = (current_n == -1);
+        current_t *= (current_is_optimal ? 2 : 1);
+    }else{}
     return;
 }
 
@@ -118,9 +120,11 @@ static int thread_func(void* data){
     pr_info("starting thread");
     while(!kthread_should_stop()){
         execute_computation();
-        report_computation();
-        current_p += 2;
-        current_t = 1;
+        if(!kthread_should_stop()){
+            report_computation();
+            current_p += 2;
+            current_t = 1;
+        }else{}
     }
     save_computation_state();
     return 0;
