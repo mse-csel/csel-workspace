@@ -29,6 +29,7 @@ ssize_t sysfs_show_val(struct device* dev,
                        struct device_attribute* attr,
                        char* buf)
 {
+    pr_info("sysfs show val\n");
     sprintf(buf, "%d\n", val);
     return strlen(buf);
 }
@@ -36,7 +37,8 @@ ssize_t sysfs_store_val(struct device* dev,
                         struct device_attribute* attr,
                         const char* buf,
                         size_t count)
-{
+{   
+    pr_info("sysfs store val\n");
     val = simple_strtol(buf, 0, 10);
     return count;
 }
