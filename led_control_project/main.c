@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "silly_led_control.h"
+#include "switch_control.h"
+
 #include "process.h"
 
 int main(int argc, char** argv){
