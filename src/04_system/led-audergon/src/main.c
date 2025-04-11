@@ -30,38 +30,14 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include "led.h"
+#define LED "10"
 
 /*
  * status led - gpioa.10 --> gpio10
  * power led  - gpiol.10 --> gpio362
  */
-#define GPIO_EXPORT "/sys/class/gpio/export"
-#define GPIO_UNEXPORT "/sys/class/gpio/unexport"
-#define GPIO_LED "/sys/class/gpio/gpio10"
-#define LED "10"
 
-static int open_led()
-{
-    // unexport pin out of sysfs (reinitialization)
-    int f = open(GPIO_UNEXPORT, O_WRONLY);
-
-    write(f, LED, strlen(LED));
-    close(f);
-
-    // export pin to sysfs
-    f = open(GPIO_EXPORT, O_WRONLY);
-    write(f, LED, strlen(LED));
-    close(f);
-
-    // config pin
-    f = open(GPIO_LED "/direction", O_WRONLY);
-    write(f, "out", 3);
-    close(f);
-
-    // open gpio value attribute
-    f = open(GPIO_LED "/value", O_RDWR);
-    return f;
-}
 
 int main(int argc, char* argv[])
 {
@@ -74,8 +50,8 @@ int main(int argc, char* argv[])
     long p1 = period / 100 * duty;
     long p2 = period - p1;
 
-    int led = open_led();
-    pwrite(led, "1", sizeof("1"), 0);
+    int led = open_led(LED);
+    led_toggle(led, true);
 
     struct timespec t1;
     clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -93,9 +69,9 @@ int main(int argc, char* argv[])
             t1 = t2;
             k  = (k + 1) % 2;
             if (k == 0)
-                pwrite(led, "1", sizeof("1"), 0);
+                led_toggle(led, true);
             else
-                pwrite(led, "0", sizeof("0"), 0);
+                led_toggle(led, false);
         }
     }
 
