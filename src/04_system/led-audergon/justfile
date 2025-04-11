@@ -1,0 +1,9 @@
+build flag="":
+    cmake -S . -B build {{flag}}
+    cmake --build build
+
+clean:
+    rm -rf build
+
+cppcheck:
+   cppcheck . -ibuild 
