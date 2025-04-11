@@ -32,6 +32,7 @@
 #include <sys/epoll.h>
 #include <time.h>
 #include "led.h"
+#include "periodic_timer.h"
 #define LED "10"
 
 /*
@@ -55,18 +56,11 @@ int main(int argc, char* argv[])
     led_toggle(led, true);
 
 
-    struct itimerspec spec;
-    memset(&spec, 0, sizeof(spec));
-    spec.it_interval.tv_sec = 5;
-    spec.it_value.tv_sec = 5;
-
-    int timerfd = timerfd_create(CLOCK_REALTIME, 0);
-    if (timerfd == -1) {
+    periodic_timer_t mytimer;
+    if (periodic_timer_init(&mytimer, 100) == -1) {
         perror("ERROR");
     }
-    if (timerfd_settime(timerfd, 0, &spec, NULL) == -1) {
-        perror("ERROR");
-    }
+    
 
     int epfd = epoll_create1(0);
     if (epfd == -1) {
@@ -76,9 +70,9 @@ int main(int argc, char* argv[])
 
     struct epoll_event ev;
     ev.events = EPOLLIN;
-    ev.data.fd = timerfd;
+    ev.data.fd = mytimer._tfd;
 
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, timerfd, &ev) == -1) {
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, mytimer._tfd, &ev) == -1) {
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
@@ -95,10 +89,10 @@ int main(int argc, char* argv[])
 
         // On lit le timerfd pour réarmer le timer
         uint64_t expirations;
-        read(timerfd, &expirations, sizeof(expirations));
+        read(mytimer._tfd, &expirations, sizeof(expirations));
         led_toggle(led, led_state);
         led_state = !led_state;
-        
+        periodic_timer_increase_period(&mytimer, 50);
     }
     
     return 0;

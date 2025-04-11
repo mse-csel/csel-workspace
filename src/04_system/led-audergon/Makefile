@@ -177,6 +177,30 @@ src/main.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/led.dir/build.make CMakeFiles/led.dir/src/main.c.s
 .PHONY : src/main.c.s
 
+src/timer.o: src/timer.c.o
+.PHONY : src/timer.o
+
+# target to build an object file
+src/timer.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/led.dir/build.make CMakeFiles/led.dir/src/timer.c.o
+.PHONY : src/timer.c.o
+
+src/timer.i: src/timer.c.i
+.PHONY : src/timer.i
+
+# target to preprocess a source file
+src/timer.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/led.dir/build.make CMakeFiles/led.dir/src/timer.c.i
+.PHONY : src/timer.c.i
+
+src/timer.s: src/timer.c.s
+.PHONY : src/timer.s
+
+# target to generate assembly for a file
+src/timer.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/led.dir/build.make CMakeFiles/led.dir/src/timer.c.s
+.PHONY : src/timer.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -192,6 +216,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/timer.o"
+	@echo "... src/timer.i"
+	@echo "... src/timer.s"
 .PHONY : help
 
 
