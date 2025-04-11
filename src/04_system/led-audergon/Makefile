@@ -129,6 +129,30 @@ led/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/led.dir/build.make CMakeFiles/led.dir/build
 .PHONY : led/fast
 
+src/led.o: src/led.c.o
+.PHONY : src/led.o
+
+# target to build an object file
+src/led.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/led.dir/build.make CMakeFiles/led.dir/src/led.c.o
+.PHONY : src/led.c.o
+
+src/led.i: src/led.c.i
+.PHONY : src/led.i
+
+# target to preprocess a source file
+src/led.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/led.dir/build.make CMakeFiles/led.dir/src/led.c.i
+.PHONY : src/led.c.i
+
+src/led.s: src/led.c.s
+.PHONY : src/led.s
+
+# target to generate assembly for a file
+src/led.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/led.dir/build.make CMakeFiles/led.dir/src/led.c.s
+.PHONY : src/led.c.s
+
 src/main.o: src/main.c.o
 .PHONY : src/main.o
 
@@ -162,6 +186,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... led"
+	@echo "... src/led.o"
+	@echo "... src/led.i"
+	@echo "... src/led.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
