@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 University of Applied Sciences Western Switzerland / Fribourg
+ * Copyright 2025 University of Applied Sciences Western Switzerland / Fribourg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@
  *
  * Abstract: System programming -  file system
  *
- * Purpose: NanoPi silly status led control system
- *
- * Autĥor:  Daniel Gachet
- * Date:    07.11.2018
+ * Autĥor:  Vincent Audergon
+ * Date:    11.04.2025
  */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -33,25 +32,17 @@
 #include <time.h>
 #include "led.h"
 #include "periodic_timer.h"
-#define LED "10"
 
 /*
  * status led - gpioa.10 --> gpio10
  * power led  - gpiol.10 --> gpio362
  */
 
+ #define LED "10"
 
-int main(int argc, char* argv[])
+
+int main(void)
 {
-    long duty   = 2;     // %
-    long period = 1000;  // ms
-    if (argc >= 2) period = atoi(argv[1]);
-    period *= 1000000;  // in ns
-
-    // compute duty period...
-    long p1 = period / 100 * duty;
-    long p2 = period - p1;
-
     int led = open_led(LED);
     led_toggle(led, true);
 
