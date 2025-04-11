@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "silly_led_control.h"
+#include "process.h"
 
 int main(int argc, char** argv){
     printf("hello there\n");
@@ -8,7 +8,7 @@ int main(int argc, char** argv){
     if(argc>=2){
         period = atoi(argv[1]);
     }else{}
-    led_process(period);
+    silly_process(period);
     printf("have a nice day\n");
     return 0;
 }
