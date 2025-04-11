@@ -1,6 +1,3 @@
-include buildroot_path
-include kernel_settings
-
 SRC_DIR=./src
 SRC_FILES=$(shell find $(SRC_DIR) -name '*.c')
 BUILD_DIR=./build

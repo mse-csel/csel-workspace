@@ -18,6 +18,11 @@
 #define GPIO_LED      "/sys/class/gpio/gpio10"
 #define LED           "10"
 
+/**
+*   THIS FUNCTION DOES NOT RETURN
+*/
+void led_process(long period);
+
 int open_led(void);
 
 #endif//SILLY_LED_CONTROL_H
