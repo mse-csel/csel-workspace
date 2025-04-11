@@ -39,6 +39,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #define K1 "0"
 #define K2 "2"
@@ -50,5 +51,7 @@
 
 #define GPIO_EXPORT   "/sys/class/gpio/export"
 #define GPIO_UNEXPORT "/sys/class/gpio/unexport"
+
+int open_switch(const char *pin, const char *gpio_path);
 
 #endif // SWITCH_CONTROL_H

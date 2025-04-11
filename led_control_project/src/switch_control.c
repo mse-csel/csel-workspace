@@ -25,7 +25,7 @@
 
 #include "switch_control.h"
 
-static int open_switch(const char *pin, const char *gpio_path){
+int open_switch(const char *pin, const char *gpio_path){
     // unexport pin out of sysfs (reinitialization)
     int f = open(GPIO_UNEXPORT, O_WRONLY);
     write(f, pin, strlen(pin));
