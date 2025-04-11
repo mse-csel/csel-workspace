@@ -1,10 +1,13 @@
+include buildroot_path
+include kernel_settings
+
 SRC_DIR=./src
 SRC_FILES=$(shell find $(SRC_DIR) -name '*.c')
 BUILD_DIR=./build
 
 INCL_SRC=-I$(SRC_DIR)/
 
-CC=gcc
+CC=/buildroot/output/host/bin/aarch64-linux-gcc
 CFLAGS=-Wall -Wextra
 
 OBJS_SRC:=$(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRC_FILES))
