@@ -22,6 +22,8 @@
  */
 
 #include "periodic_timer.h"
+#include <sys/timerfd.h>
+#include <string.h>
 
 #define MS_TO_NS_FACTOR (1000000)
 

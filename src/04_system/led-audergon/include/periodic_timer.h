@@ -77,4 +77,4 @@ int periodic_timer_decrease_period(periodic_timer_t* t, unsigned int delta_ms);
  */
 int periodic_timer_reset_period(periodic_timer_t* t);
 
-#endif
+#endif // TIMER_H_

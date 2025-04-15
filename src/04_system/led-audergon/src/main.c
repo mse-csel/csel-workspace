@@ -23,36 +23,88 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/epoll.h>
 #include <sys/stat.h>
 #include <sys/timerfd.h>
 #include <sys/types.h>
-#include <sys/epoll.h>
 #include <time.h>
-#include "led.h"
+#include <unistd.h>
+#include "button.h"
+#include "gpio.h"
 #include "periodic_timer.h"
 
-/*
- * status led - gpioa.10 --> gpio10
- * power led  - gpiol.10 --> gpio362
- */
+#define LED_GPIO (10)
+#define BUTTON_GPIO_LEFT (10)
+#define BUTTON_GPIO_MIDDLE (11)
+#define BUTTON_GPIO_RIGHT (12)
+#define INIT_FREQUENCY_HZ (2)
+#define S_TO_MS_FACTOR (1000)
+#define BUTTON_POLLING_PERIOD_MS (50)
 
- #define LED "10"
+void increase_period(void* param)
+{
+    periodic_timer_t* t = (periodic_timer_t*)param;
+    periodic_timer_increase_period(t, 50);
+}
 
+void decrease_period(void* param)
+{
+    periodic_timer_t* t = (periodic_timer_t*)param;
+    periodic_timer_increase_period(t, 50);
+}
+
+void reset_period(void* param)
+{
+    periodic_timer_t* t = (periodic_timer_t*)param;
+    periodic_timer_reset_period(t);
+}
 
 int main(void)
 {
-    int led = open_led(LED);
-    led_toggle(led, true);
-
-
-    periodic_timer_t mytimer;
-    if (periodic_timer_init(&mytimer, 100) == -1) {
+    gpio_t led;
+    button_t button_left;
+    button_t button_middle;
+    button_t button_right;
+    periodic_timer_t ledtimer;
+    periodic_timer_t buttontimer; // Poll button state to detect repeat
+    // Initialize the buttons and led
+    if (gpio_init(&led, LED_GPIO, GPIO_DIR_OUT) == -1) {
         perror("ERROR");
+        exit(EXIT_FAILURE);
     }
-    
+    if (button_init(&button_left, BUTTON_GPIO_LEFT, 1000, 100) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    if (button_init(&button_middle, BUTTON_GPIO_MIDDLE, 1000, 100) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    if (button_init(&button_right, BUTTON_GPIO_RIGHT, 1000, 100) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    // Attach the button callbacks
+    button_attach_on_click(&button_left, increase_period, &ledtimer);
+    button_attach_on_click(&button_middle, reset_period, &ledtimer);
+    button_attach_on_click(&button_right, decrease_period, &ledtimer);
+    button_attach_on_repeat(&button_left, increase_period, &ledtimer);
+    button_attach_on_repeat(&button_right, decrease_period, &ledtimer);
+    // Initialize the timers
+    unsigned int period_ms = S_TO_MS_FACTOR / INIT_FREQUENCY_HZ;
+    if (periodic_timer_init(&ledtimer, period_ms) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    if (periodic_timer_init(&buttontimer, BUTTON_POLLING_PERIOD_MS) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
 
+    // epoll
     int epfd = epoll_create1(0);
     if (epfd == -1) {
         perror("epoll_create1");
@@ -61,12 +113,34 @@ int main(void)
 
     struct epoll_event ev;
     ev.events = EPOLLIN;
-    ev.data.fd = mytimer._tfd;
+    ev.data.fd = ledtimer._tfd;
 
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, mytimer._tfd, &ev) == -1) {
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, ledtimer._tfd, &ev) == -1) {
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
+    ev.data.fd = buttontimer._tfd;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, buttontimer._tfd, &ev) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    ev.events = EPOLLIN | EPOLLET; // Edge-triggered
+    ev.data.fd = button_left.gpio_ro.fd_ro;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_left.gpio_ro.fd_ro, &ev) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    ev.data.fd = button_middle.gpio_ro.fd_ro;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_middle.gpio_ro.fd_ro, &ev) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    ev.data.fd = button_right.gpio_ro.fd_ro;
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_right.gpio_ro.fd_ro, &ev) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+
 
     bool led_state = false;
 
@@ -77,14 +151,35 @@ int main(void)
             perror("epoll_wait");
             exit(EXIT_FAILURE);
         }
-
-        // On lit le timerfd pour réarmer le timer
-        uint64_t expirations;
-        read(mytimer._tfd, &expirations, sizeof(expirations));
-        led_toggle(led, led_state);
-        led_state = !led_state;
-        periodic_timer_increase_period(&mytimer, 50);
+        if (events[0].data.fd == button_left.gpio_ro.fd_ro) {
+            // Button left pressed
+            button_update(&button_left);
+            continue;
+        }
+        if (events[0].data.fd == button_middle.gpio_ro.fd_ro) {
+            // Button middle pressed
+            button_update(&button_middle);
+            continue;
+        }
+        if (events[0].data.fd == button_right.gpio_ro.fd_ro) {
+            // Button right pressed
+            button_update(&button_right);
+            continue;
+        }
+        if (events[0].data.fd == buttontimer._tfd) {
+            uint64_t expirations;
+            read(buttontimer._tfd, &expirations, sizeof(expirations));
+            button_update(&button_left);
+            button_update(&button_middle);
+            button_update(&button_right);
+            continue;
+        }
+        if (events[0].data.fd == ledtimer._tfd) {
+            uint64_t expirations;
+            read(ledtimer._tfd, &expirations, sizeof(expirations));
+            gpio_write(&led, led_state);
+            led_state = !led_state;
+        }
     }
-    
     return 0;
 }
