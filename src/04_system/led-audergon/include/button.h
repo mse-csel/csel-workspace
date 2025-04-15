@@ -36,8 +36,8 @@ typedef struct button {
     time_t _last_repeat;
     bool _state;
     bool _repeat_triggered;
-    void (*_on_click)(void);
-    void (*_on_repeat)(void);
+    void (*_on_click)(void*);
+    void (*_on_repeat)(void*);
     void* _on_click_param;
     void* _on_repeat_param;
 } button_t;

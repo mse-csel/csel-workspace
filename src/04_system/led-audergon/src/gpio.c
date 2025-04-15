@@ -46,6 +46,10 @@ int gpio_init(gpio_t* g, unsigned int gpio, gpio_dir_t dir) {
     g->fd_ro = -1;
     g->gpio = gpio;
     g->_dir = dir;
+    memset(g->_gpio_str, 0, sizeof(g->_gpio_str));
+    memset(g->_gpio_path, 0, sizeof(g->_gpio_path));
+    memset(g->_gpio_dir, 0, sizeof(g->_gpio_dir));
+    memset(g->_gpio_value, 0, sizeof(g->_gpio_value));
     snprintf(g->_gpio_str, sizeof(g->_gpio_str), "%u", gpio);
     // export pin to sysfs
     int f = open(GPIO_EXPORT, O_WRONLY);
@@ -58,9 +62,9 @@ int gpio_init(gpio_t* g, unsigned int gpio, gpio_dir_t dir) {
 
     strncpy(g->_gpio_path, GPIO_BASE, sizeof(g->_gpio_path));
     strncat(g->_gpio_path, g->_gpio_str, strnlen(g->_gpio_str, sizeof(g->_gpio_str)));
-    strncpy(g->_gpio_dir, g->_gpio_path, strnlen(g->_gpio_dir, sizeof(g->_gpio_dir)));
+    strncpy(g->_gpio_dir, g->_gpio_path, strnlen(g->_gpio_path, sizeof(g->_gpio_dir)));
     strncat(g->_gpio_dir, GPIO_DIR, sizeof(g->_gpio_dir) - strlen(g->_gpio_dir) - 1);
-    strncpy(g->_gpio_value, g->_gpio_path, sizeof(g->_gpio_value));
+    strncpy(g->_gpio_value, g->_gpio_path, strnlen(g->_gpio_path, sizeof(g->_gpio_value)));
     strncat(g->_gpio_value, GPIO_VALUE, sizeof(g->_gpio_value) - strlen(g->_gpio_value) - 1);
 
     printf("TEMP DEBUG: gpio_path: %s\n", g->_gpio_path);
@@ -85,6 +89,7 @@ int gpio_init(gpio_t* g, unsigned int gpio, gpio_dir_t dir) {
 
     // open gpio value attribute
     f = open(g->_gpio_value, O_RDWR);
+    g->fd_ro = f;
     return f;
 }
 

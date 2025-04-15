@@ -37,29 +37,43 @@
 #include "periodic_timer.h"
 
 #define LED_GPIO (10)
-#define BUTTON_GPIO_LEFT (10)
-#define BUTTON_GPIO_MIDDLE (11)
-#define BUTTON_GPIO_RIGHT (12)
+#define BUTTON_GPIO_K1 (0)
+#define BUTTON_GPIO_K2 (2)
+#define BUTTON_GPIO_K3 (3)
+#define MIN_FREQUENCY_HZ (0.5)
 #define INIT_FREQUENCY_HZ (2)
+#define MAX_FREQUENCY_HZ (10)
 #define S_TO_MS_FACTOR (1000)
 #define BUTTON_POLLING_PERIOD_MS (50)
+#define DELTA_MS (100)
+
 
 void increase_period(void* param)
 {
     periodic_timer_t* t = (periodic_timer_t*)param;
-    periodic_timer_increase_period(t, 50);
+    if (periodic_timer_increase_period(t, DELTA_MS) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void decrease_period(void* param)
 {
     periodic_timer_t* t = (periodic_timer_t*)param;
-    periodic_timer_increase_period(t, 50);
+    if (periodic_timer_decrease_period(t, DELTA_MS) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void reset_period(void* param)
 {
     periodic_timer_t* t = (periodic_timer_t*)param;
-    periodic_timer_reset_period(t);
+    if (periodic_timer_reset_period(t) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    printf("Reset period\n");
 }
 
 int main(void)
@@ -75,15 +89,27 @@ int main(void)
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
-    if (button_init(&button_left, BUTTON_GPIO_LEFT, 1000, 100) == -1) {
+    if (button_init(&button_left, BUTTON_GPIO_K1, 1000, 100) == -1) {
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
-    if (button_init(&button_middle, BUTTON_GPIO_MIDDLE, 1000, 100) == -1) {
+    if (button_init(&button_middle, BUTTON_GPIO_K2, 1000, 100) == -1) {
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
-    if (button_init(&button_right, BUTTON_GPIO_RIGHT, 1000, 100) == -1) {
+    if (button_init(&button_right, BUTTON_GPIO_K3, 1000, 100) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    // Initialize the timers
+    long period_ms = S_TO_MS_FACTOR / INIT_FREQUENCY_HZ;
+    long min_period_ms = S_TO_MS_FACTOR / MAX_FREQUENCY_HZ;
+    long max_period_ms = S_TO_MS_FACTOR / MIN_FREQUENCY_HZ;
+    if (periodic_timer_init(&ledtimer, period_ms, min_period_ms, max_period_ms) == -1) {
+        perror("ERROR");
+        exit(EXIT_FAILURE);
+    }
+    if (periodic_timer_init(&buttontimer, BUTTON_POLLING_PERIOD_MS, BUTTON_POLLING_PERIOD_MS, BUTTON_POLLING_PERIOD_MS) == -1) {
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
@@ -93,16 +119,6 @@ int main(void)
     button_attach_on_click(&button_right, decrease_period, &ledtimer);
     button_attach_on_repeat(&button_left, increase_period, &ledtimer);
     button_attach_on_repeat(&button_right, decrease_period, &ledtimer);
-    // Initialize the timers
-    unsigned int period_ms = S_TO_MS_FACTOR / INIT_FREQUENCY_HZ;
-    if (periodic_timer_init(&ledtimer, period_ms) == -1) {
-        perror("ERROR");
-        exit(EXIT_FAILURE);
-    }
-    if (periodic_timer_init(&buttontimer, BUTTON_POLLING_PERIOD_MS) == -1) {
-        perror("ERROR");
-        exit(EXIT_FAILURE);
-    }
 
     // epoll
     int epfd = epoll_create1(0);
@@ -124,22 +140,25 @@ int main(void)
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
-    ev.events = EPOLLIN | EPOLLET; // Edge-triggered
-    ev.data.fd = button_left.gpio_ro.fd_ro;
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_left.gpio_ro.fd_ro, &ev) == -1) {
-        perror("ERROR");
-        exit(EXIT_FAILURE);
-    }
-    ev.data.fd = button_middle.gpio_ro.fd_ro;
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_middle.gpio_ro.fd_ro, &ev) == -1) {
-        perror("ERROR");
-        exit(EXIT_FAILURE);
-    }
-    ev.data.fd = button_right.gpio_ro.fd_ro;
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_right.gpio_ro.fd_ro, &ev) == -1) {
-        perror("ERROR");
-        exit(EXIT_FAILURE);
-    }
+    // printf("Test 7.1\n");
+    // ev.events = EPOLLIN | EPOLLET; // Edge-triggered
+    // ev.data.fd = button_left.gpio_ro.fd_ro;
+    // if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_left.gpio_ro.fd_ro, &ev) == -1) {
+    //     perror("ERROR");
+    //     exit(EXIT_FAILURE);
+    // }
+    // printf("Test \n");
+    // ev.data.fd = button_middle.gpio_ro.fd_ro;
+    // if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_middle.gpio_ro.fd_ro, &ev) == -1) {
+    //     perror("ERROR");
+    //     exit(EXIT_FAILURE);
+    // }
+    // ev.data.fd = button_right.gpio_ro.fd_ro;
+    // if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_right.gpio_ro.fd_ro, &ev) == -1) {
+    //     perror("ERROR");
+    //     exit(EXIT_FAILURE);
+    // }
+    // printf("Test 8\n");
 
 
     bool led_state = false;

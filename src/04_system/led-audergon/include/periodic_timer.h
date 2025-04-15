@@ -29,7 +29,10 @@
 typedef struct periodic_timer {
     int _tfd;
     struct itimerspec _spec;
-    unsigned int _initial_period_ms;
+    long _initial_period_ms;
+    long _min_period_ms;
+    long _max_period_ms;
+    long _current_period_ms;
 } periodic_timer_t;
 
 
@@ -38,34 +41,53 @@ typedef struct periodic_timer {
  * 
  * @param t a pointer to a periodic_timer_t structure
  * @param period_ms the initial timer period is ms
+ * @param min_period_ms the minimum timer period is ms
+ * @param max_period_ms the maximum timer period is ms
  * 
  * @return -1 if an error occured 
  */
-int periodic_timer_init(periodic_timer_t* t, unsigned int period_ms);
+int periodic_timer_init(periodic_timer_t* t, long period_ms, long min_period_ms, long max_period_ms);
+
+/**
+ * Set a timer's period and apply the change immediately
+ * 
+ * If the new period is greater than the maximum period, the timer is set to the maximum period.
+ * If the new period is less than the minimum period, the timer is set to the minimum period.
+ * 
+ * @param t a pointer to a periodic_timer_t structure
+ * @param period_ms the new timer period is ms
+ * 
+ * @return -1 if an error occured 
+ */
+int periodic_timer_set_period(periodic_timer_t* t, long period_ms);
 
 /**
  * Increase a timer's period and apply the change immediately
  * 
  * new period = old period + delta
  * 
+ * If the new period is greater than the maximum period, the timer is set to the maximum period.
+ * 
  * @param t a pointer to a periodic_timer_t structure
  * @param period_ms the delta period is ms
  * 
  * @return -1 if an error occured 
  */
-int periodic_timer_increase_period(periodic_timer_t* t, unsigned int delta_ms);
+int periodic_timer_increase_period(periodic_timer_t* t, long delta_ms);
 
 /**
  * Decrease a timer's period and apply the change immediately
  * 
  * new period = old period - delta
  * 
+ * If the new period is less than the minimum period, the timer is set to the minimum period.
+ * 
  * @param t a pointer to a periodic_timer_t structure
  * @param period_ms the delta period is ms
  * 
  * @return -1 if an error occured 
  */
-int periodic_timer_decrease_period(periodic_timer_t* t, unsigned int delta_ms);
+int periodic_timer_decrease_period(periodic_timer_t* t, long delta_ms);
 
 /**
  * Reset a timer's period to its initial value and apply the change immediately
