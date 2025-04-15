@@ -26,10 +26,7 @@
 
 #include <stdbool.h>
 
-typedef enum {
-    GPIO_DIR_IN,
-    GPIO_DIR_OUT
-} gpio_dir_t;
+typedef enum { GPIO_DIR_IN, GPIO_DIR_OUT } gpio_dir_t;
 
 typedef struct gpio {
     int fd_ro;
@@ -73,4 +70,4 @@ int gpio_write(gpio_t* g, bool value);
  */
 bool gpio_read(gpio_t* g);
 
-#endif // GPIO_H_
+#endif  // GPIO_H_

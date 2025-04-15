@@ -32,21 +32,12 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+
 #include "button.h"
+#include "config.h"
+#include "convert.h"
 #include "gpio.h"
 #include "periodic_timer.h"
-
-#define LED_GPIO (10)
-#define BUTTON_GPIO_K1 (0)
-#define BUTTON_GPIO_K2 (2)
-#define BUTTON_GPIO_K3 (3)
-#define MIN_FREQUENCY_HZ (0.5)
-#define INIT_FREQUENCY_HZ (2)
-#define MAX_FREQUENCY_HZ (10)
-#define S_TO_MS_FACTOR (1000)
-#define BUTTON_POLLING_PERIOD_MS (50)
-#define DELTA_MS (100)
-
 
 void increase_period(void* param)
 {
@@ -83,7 +74,7 @@ int main(void)
     button_t button_middle;
     button_t button_right;
     periodic_timer_t ledtimer;
-    periodic_timer_t buttontimer; // Poll button state to detect repeat
+    periodic_timer_t buttontimer;  // Poll button state to detect repeat
     // Initialize the buttons and led
     if (gpio_init(&led, LED_GPIO, GPIO_DIR_OUT) == -1) {
         perror("ERROR");
@@ -102,14 +93,18 @@ int main(void)
         exit(EXIT_FAILURE);
     }
     // Initialize the timers
-    long period_ms = S_TO_MS_FACTOR / INIT_FREQUENCY_HZ;
-    long min_period_ms = S_TO_MS_FACTOR / MAX_FREQUENCY_HZ;
-    long max_period_ms = S_TO_MS_FACTOR / MIN_FREQUENCY_HZ;
-    if (periodic_timer_init(&ledtimer, period_ms, min_period_ms, max_period_ms) == -1) {
+    long period_ms     = SEC_TO_MS_FACTOR / INIT_FREQUENCY_HZ;
+    long min_period_ms = SEC_TO_MS_FACTOR / MAX_FREQUENCY_HZ;
+    long max_period_ms = SEC_TO_MS_FACTOR / MIN_FREQUENCY_HZ;
+    if (periodic_timer_init(
+            &ledtimer, period_ms, min_period_ms, max_period_ms) == -1) {
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
-    if (periodic_timer_init(&buttontimer, BUTTON_POLLING_PERIOD_MS, BUTTON_POLLING_PERIOD_MS, BUTTON_POLLING_PERIOD_MS) == -1) {
+    if (periodic_timer_init(&buttontimer,
+                            BUTTON_POLLING_PERIOD_MS,
+                            BUTTON_POLLING_PERIOD_MS,
+                            BUTTON_POLLING_PERIOD_MS) == -1) {
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
@@ -128,7 +123,7 @@ int main(void)
     }
 
     struct epoll_event ev;
-    ev.events = EPOLLIN;
+    ev.events  = EPOLLIN;
     ev.data.fd = ledtimer._tfd;
 
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, ledtimer._tfd, &ev) == -1) {
