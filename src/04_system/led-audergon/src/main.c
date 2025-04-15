@@ -64,7 +64,6 @@ void reset_period(void* param)
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
-    printf("Reset period\n");
 }
 
 int main(void)

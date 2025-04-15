@@ -78,10 +78,6 @@ int gpio_init(gpio_t* g, unsigned int gpio, gpio_dir_t dir)
             GPIO_VALUE,
             sizeof(g->_gpio_value) - strlen(g->_gpio_value) - 1);
 
-    printf("TEMP DEBUG: gpio_path: %s\n", g->_gpio_path);
-    printf("TEMP DEBUG: gpio_dir: %s\n", g->_gpio_dir);
-    printf("TEMP DEBUG: gpio_value: %s\n", g->_gpio_value);
-
     // config pin
     f = open(g->_gpio_dir, O_WRONLY);
     if (f == -1) {
