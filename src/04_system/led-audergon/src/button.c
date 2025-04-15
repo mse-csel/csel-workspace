@@ -23,7 +23,6 @@
 
 #include "button.h"
 
-#include <stdint.h>
 #include <time.h>
 
 #include "convert.h"
