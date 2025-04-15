@@ -140,26 +140,6 @@ int main(void)
         perror("ERROR");
         exit(EXIT_FAILURE);
     }
-    // printf("Test 7.1\n");
-    // ev.events = EPOLLIN | EPOLLET; // Edge-triggered
-    // ev.data.fd = button_left.gpio_ro.fd_ro;
-    // if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_left.gpio_ro.fd_ro, &ev) == -1) {
-    //     perror("ERROR");
-    //     exit(EXIT_FAILURE);
-    // }
-    // printf("Test \n");
-    // ev.data.fd = button_middle.gpio_ro.fd_ro;
-    // if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_middle.gpio_ro.fd_ro, &ev) == -1) {
-    //     perror("ERROR");
-    //     exit(EXIT_FAILURE);
-    // }
-    // ev.data.fd = button_right.gpio_ro.fd_ro;
-    // if (epoll_ctl(epfd, EPOLL_CTL_ADD, button_right.gpio_ro.fd_ro, &ev) == -1) {
-    //     perror("ERROR");
-    //     exit(EXIT_FAILURE);
-    // }
-    // printf("Test 8\n");
-
 
     bool led_state = false;
 
@@ -169,21 +149,6 @@ int main(void)
         if (nfds == -1) {
             perror("epoll_wait");
             exit(EXIT_FAILURE);
-        }
-        if (events[0].data.fd == button_left.gpio_ro.fd_ro) {
-            // Button left pressed
-            button_update(&button_left);
-            continue;
-        }
-        if (events[0].data.fd == button_middle.gpio_ro.fd_ro) {
-            // Button middle pressed
-            button_update(&button_middle);
-            continue;
-        }
-        if (events[0].data.fd == button_right.gpio_ro.fd_ro) {
-            // Button right pressed
-            button_update(&button_right);
-            continue;
         }
         if (events[0].data.fd == buttontimer._tfd) {
             uint64_t expirations;
