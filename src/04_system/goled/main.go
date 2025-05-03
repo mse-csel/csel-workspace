@@ -2,21 +2,16 @@ package main
 
 import (
 	"fmt"
-	"log/syslog"
 	"os"
 	"os/signal"
-	"strconv"
 	"time"
-	"unsafe"
 
-	"golang.org/x/sys/unix"
+	"csel1/goled/internal/gpio"
+	"csel1/goled/internal/logger"
+	"csel1/goled/internal/timer"
 )
 
 const (
-	// GPIO paths
-	gpioExport   = "/sys/class/gpio/export"
-	gpioUnexport = "/sys/class/gpio/unexport"
-
 	// Pin assignments based on the schematic
 	ledPin = "10" // Status LED
 	k1Pin  = "0"  // K1 button - GPIOA0
@@ -28,384 +23,337 @@ const (
 	freqIncrement = 0.5  // Frequency change increment in Hz
 	minFreq       = 0.5  // Minimum frequency in Hz
 	maxFreq       = 10.0 // Maximum frequency in Hz
+
+	// Auto-repeat settings
+	autoRepeatDelay    = 500 * time.Millisecond
+	autoRepeatInterval = 200 * time.Millisecond
 )
 
-// Helper function to write to sysfs files
-func writeFile(filename, data string) error {
-	return os.WriteFile(filename, []byte(data), 0644)
-}
-
-// Helper function to read from sysfs files
-func readFile(filename string) (string, error) {
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		return "", err
-	}
-	return string(content), nil
-}
-
-// Configure a GPIO pin
-func setupGPIO(pin, direction string, edge string) error {
-	// Unexport first to ensure clean state
-	_ = writeFile(gpioUnexport, pin)
-
-	// Export the pin
-	if err := writeFile(gpioExport, pin); err != nil {
-		return fmt.Errorf("failed to export GPIO pin %s: %v", pin, err)
-	}
-
-	// Wait a moment for sysfs entries to be created
-	time.Sleep(100 * time.Millisecond)
-
-	// Set direction
-	dirPath := fmt.Sprintf("/sys/class/gpio/gpio%s/direction", pin)
-	if err := writeFile(dirPath, direction); err != nil {
-		return fmt.Errorf("failed to set direction for GPIO pin %s: %v", pin, err)
-	}
-
-	// Set edge detection if provided and pin is input
-	if edge != "" && direction == "in" {
-		edgePath := fmt.Sprintf("/sys/class/gpio/gpio%s/edge", pin)
-		if err := writeFile(edgePath, edge); err != nil {
-			return fmt.Errorf("failed to set edge for GPIO pin %s: %v", pin, err)
-		}
-	}
-
-	return nil
-}
-
-// Set LED state
-func setLED(pin string, state bool) error {
-	value := "0"
-	if state {
-		value = "1"
-	}
-
-	return writeFile(fmt.Sprintf("/sys/class/gpio/gpio%s/value", pin), value)
-}
-
 func main() {
-	// Setup syslog
-	logger, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DAEMON, "goled")
+	// Initialize logger
+	log, err := logger.New("goled")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to connect to syslog: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
-	defer logger.Close()
+	defer log.Close()
 
-	logger.Info("Starting goled application with debug logging")
-	logger.Info(fmt.Sprintf("Using LED pin: %s", ledPin))
-	logger.Info(fmt.Sprintf("Using button pins: K1=%s, K2=%s, K3=%s", k1Pin, k2Pin, k3Pin))
+	log.Info("Starting goled application")
+	log.Info("Using LED pin: %s", ledPin)
+	log.Info("Using button pins: K1=%s, K2=%s, K3=%s", k1Pin, k2Pin, k3Pin)
 
 	// Setup signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, unix.SIGTERM)
+	signal.Notify(sigChan, os.Interrupt)
 
-	// Setup GPIO for LED and buttons
-	pins := []struct {
-		pin       string
-		direction string
-		edge      string
-	}{
-		{ledPin, "out", ""},
-		{k1Pin, "in", "both"},
-		{k2Pin, "in", "both"},
-		{k3Pin, "in", "both"},
-	}
-
-	// Configure all GPIO pins
-	for _, p := range pins {
-		if err := setupGPIO(p.pin, p.direction, p.edge); err != nil {
-			logger.Err(err.Error())
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-	}
-	logger.Info("GPIO pins configured successfully")
-
-	// Cleanup function to be called on exit
-	cleanup := func() {
-		logger.Info("Cleaning up resources")
-		setLED(ledPin, false)
-		for _, p := range pins {
-			writeFile(gpioUnexport, p.pin)
-		}
-	}
-	defer cleanup()
-
-	// Open value files for buttons
-	buttons := make(map[string]*os.File)
-	buttonFds := make(map[string]int)
-
-	for _, p := range []string{k1Pin, k2Pin, k3Pin} {
-		path := fmt.Sprintf("/sys/class/gpio/gpio%s/value", p)
-		f, err := os.Open(path)
-		if err != nil {
-			logger.Err(fmt.Sprintf("Failed to open GPIO value file for pin %s: %v", p, err))
-			cleanup()
-			os.Exit(1)
-		}
-		defer f.Close()
-		buttons[p] = f
-		buttonFds[p] = int(f.Fd())
-	}
-	logger.Info("Button files opened successfully")
-
-	// Create epoll instance
-	epfd, err := unix.EpollCreate1(0)
+	// Initialize GPIO devices
+	led, err := gpio.NewLED(ledPin)
 	if err != nil {
-		logger.Err(fmt.Sprintf("epoll create error: %v", err))
-		cleanup()
+		log.Error("Failed to initialize LED: %v", err)
 		os.Exit(1)
 	}
-	defer unix.Close(epfd)
-	logger.Info("Epoll created successfully")
+	defer led.Close()
 
-	// Add buttons to epoll
-	var event unix.EpollEvent
-	event.Events = unix.EPOLLIN | unix.EPOLLPRI | unix.EPOLLET
-
-	// Register all button file descriptors with epoll
-	for pin, fd := range buttonFds {
-		event.Fd = int32(fd)
-		if err = unix.EpollCtl(epfd, unix.EPOLL_CTL_ADD, fd, &event); err != nil {
-			logger.Err(fmt.Sprintf("epoll add error for pin %s: %v", pin, err))
-			cleanup()
-			os.Exit(1)
-		}
-	}
-	logger.Info("All buttons registered with epoll")
-
-	// Create timer for LED blinking
-	timerFd, err := unix.TimerfdCreate(unix.CLOCK_MONOTONIC, unix.TFD_NONBLOCK)
+	// Initialize buttons
+	k1, err := gpio.NewButton(k1Pin)
 	if err != nil {
-		logger.Err(fmt.Sprintf("timerfd create error: %v", err))
-		cleanup()
+		log.Error("Failed to initialize K1 button: %v", err)
 		os.Exit(1)
 	}
-	defer unix.Close(timerFd)
-	logger.Info("Timer created successfully")
+	defer k1.Close()
 
-	// Add timer to epoll
-	event.Fd = int32(timerFd)
-	if err = unix.EpollCtl(epfd, unix.EPOLL_CTL_ADD, timerFd, &event); err != nil {
-		logger.Err(fmt.Sprintf("epoll add error for timer: %v", err))
-		cleanup()
+	k2, err := gpio.NewButton(k2Pin)
+	if err != nil {
+		log.Error("Failed to initialize K2 button: %v", err)
+		os.Exit(1)
+	}
+	defer k2.Close()
+
+	k3, err := gpio.NewButton(k3Pin)
+	if err != nil {
+		log.Error("Failed to initialize K3 button: %v", err)
+		os.Exit(1)
+	}
+	defer k3.Close()
+
+	// Initialize timer for LED blinking
+	ledTimer, err := timer.New()
+	if err != nil {
+		log.Error("Failed to create timer: %v", err)
+		os.Exit(1)
+	}
+	defer ledTimer.Close()
+
+	// Create a controller to manage the devices
+	controller := NewController(log, led, ledTimer, k1, k2, k3, initialFreq, freqIncrement, minFreq, maxFreq)
+	defer controller.Cleanup()
+
+	// Set initial frequency
+	log.Info("Setting initial frequency to %.1f Hz", initialFreq)
+	controller.SetFrequency(initialFreq)
+
+	// Run the main event loop
+	controller.Run(sigChan, autoRepeatDelay, autoRepeatInterval)
+}
+
+// Controller manages the LED and buttons
+type Controller struct {
+	log           *logger.Logger
+	led           *gpio.LED
+	timer         *timer.Timer
+	k1            *gpio.Button
+	k2            *gpio.Button
+	k3            *gpio.Button
+	currentFreq   float64
+	freqIncrement float64
+	minFreq       float64
+	maxFreq       float64
+	poller        *gpio.Poller
+	k1Timer       *time.Timer
+	k3Timer       *time.Timer
+	k1Ticker      *time.Ticker
+	k3Ticker      *time.Ticker
+}
+
+// NewController creates a new controller
+func NewController(log *logger.Logger, led *gpio.LED, timer *timer.Timer, k1, k2, k3 *gpio.Button,
+	initialFreq, freqIncrement, minFreq, maxFreq float64) *Controller {
+
+	poller, err := gpio.NewPoller()
+	if err != nil {
+		log.Error("Failed to create poller: %v", err)
 		os.Exit(1)
 	}
 
-	// Initial frequency and LED state
-	freq := initialFreq
+	// Register the timer with the poller
+	if err := poller.AddFD(timer.GetFD()); err != nil {
+		log.Error("Failed to add timer to poller: %v", err)
+		os.Exit(1)
+	}
+
+	// Register buttons with the poller
+	if err := poller.AddFD(k1.GetFD()); err != nil {
+		log.Error("Failed to add K1 button to poller: %v", err)
+		os.Exit(1)
+	}
+
+	if err := poller.AddFD(k2.GetFD()); err != nil {
+		log.Error("Failed to add K2 button to poller: %v", err)
+		os.Exit(1)
+	}
+
+	if err := poller.AddFD(k3.GetFD()); err != nil {
+		log.Error("Failed to add K3 button to poller: %v", err)
+		os.Exit(1)
+	}
+
+	return &Controller{
+		log:           log,
+		led:           led,
+		timer:         timer,
+		k1:            k1,
+		k2:            k2,
+		k3:            k3,
+		currentFreq:   initialFreq,
+		freqIncrement: freqIncrement,
+		minFreq:       minFreq,
+		maxFreq:       maxFreq,
+		poller:        poller,
+	}
+}
+
+// SetFrequency sets the LED blinking frequency
+func (c *Controller) SetFrequency(freq float64) {
+	c.currentFreq = freq
+	c.timer.SetPeriod(time.Duration(1e9 / freq))
+}
+
+// Cleanup releases all resources
+func (c *Controller) Cleanup() {
+	// Stop any timers
+	if c.k1Timer != nil {
+		c.k1Timer.Stop()
+	}
+	if c.k3Timer != nil {
+		c.k3Timer.Stop()
+	}
+	if c.k1Ticker != nil {
+		c.k1Ticker.Stop()
+	}
+	if c.k3Ticker != nil {
+		c.k3Ticker.Stop()
+	}
+
+	// Close the poller
+	c.poller.Close()
+}
+
+// Run runs the main event loop
+func (c *Controller) Run(sigChan chan os.Signal, autoRepeatDelay, autoRepeatInterval time.Duration) {
+	// LED state
 	ledState := true
-	setLED(ledPin, ledState)
-	logger.Info(fmt.Sprintf("Initial LED frequency: %.1f Hz", freq))
-
-	// Function to set the timer period based on frequency
-	setPeriod := func(frequency float64) {
-		period := time.Duration(1e9 / frequency)
-
-		var timeSpec unix.ItimerSpec
-		timeSpec.Value.Sec = int64(period / time.Second)
-		timeSpec.Value.Nsec = int64(period % time.Second)
-		timeSpec.Interval.Sec = timeSpec.Value.Sec
-		timeSpec.Interval.Nsec = timeSpec.Value.Nsec
-
-		if err := unix.TimerfdSettime(timerFd, 0, &timeSpec, nil); err != nil {
-			logger.Err(fmt.Sprintf("timerfd settime error: %v", err))
-		}
-	}
-
-	// Set initial timer
-	setPeriod(freq)
-	logger.Info(fmt.Sprintf("Timer set to initial frequency: %.1f Hz", freq))
-
-	// Button state tracking
-	buttonState := make(map[string]bool)
-
-	// Auto-repeat variables
-	const (
-		autoRepeatDelay    = 500 * time.Millisecond
-		autoRepeatInterval = 200 * time.Millisecond
-	)
-
-	var k1Timer, k3Timer *time.Timer
-	var k1Ticker, k3Ticker *time.Ticker
-
-	// Function to clean up timers
-	cleanupTimers := func() {
-		if k1Timer != nil {
-			k1Timer.Stop()
-		}
-		if k3Timer != nil {
-			k3Timer.Stop()
-		}
-		if k1Ticker != nil {
-			k1Ticker.Stop()
-		}
-		if k3Ticker != nil {
-			k3Ticker.Stop()
-		}
-	}
+	c.led.SetState(ledState)
 
 	// Button handler functions
 	increaseFreq := func() {
-		if freq < maxFreq {
-			freq += freqIncrement
-			if freq > maxFreq {
-				freq = maxFreq
+		if c.currentFreq < c.maxFreq {
+			newFreq := c.currentFreq + c.freqIncrement
+			if newFreq > c.maxFreq {
+				newFreq = c.maxFreq
 			}
-			logger.Info(fmt.Sprintf("Increased LED frequency to %.1f Hz", freq))
-			setPeriod(freq)
+			c.log.Info("Increased LED frequency to %.1f Hz", newFreq)
+			c.SetFrequency(newFreq)
 		} else {
-			logger.Info(fmt.Sprintf("LED frequency at maximum: %.1f Hz", freq))
+			c.log.Info("LED frequency at maximum: %.1f Hz", c.currentFreq)
 		}
 	}
 
 	decreaseFreq := func() {
-		if freq > minFreq {
-			freq -= freqIncrement
-			if freq < minFreq {
-				freq = minFreq
+		if c.currentFreq > c.minFreq {
+			newFreq := c.currentFreq - c.freqIncrement
+			if newFreq < c.minFreq {
+				newFreq = c.minFreq
 			}
-			logger.Info(fmt.Sprintf("Decreased LED frequency to %.1f Hz", freq))
-			setPeriod(freq)
+			c.log.Info("Decreased LED frequency to %.1f Hz", newFreq)
+			c.SetFrequency(newFreq)
 		} else {
-			logger.Info(fmt.Sprintf("LED frequency at minimum: %.1f Hz", freq))
+			c.log.Info("LED frequency at minimum: %.1f Hz", c.currentFreq)
 		}
 	}
 
 	resetFreq := func() {
-		freq = initialFreq
-		logger.Info(fmt.Sprintf("Reset LED frequency to %.1f Hz", freq))
-		setPeriod(freq)
+		c.log.Info("Reset LED frequency to %.1f Hz", initialFreq)
+		c.SetFrequency(initialFreq)
 	}
 
 	// Main event loop
-	var events [10]unix.EpollEvent
 	for {
 		select {
 		case sig := <-sigChan:
 			// Handle termination signals
-			logger.Info(fmt.Sprintf("Received signal %v, shutting down", sig))
-			cleanupTimers()
-			cleanup()
+			c.log.Info("Received signal %v, shutting down", sig)
 			return
 
 		default:
-			// Wait for events with a timeout
-			nevents, err := unix.EpollWait(epfd, events[:], 100)
+			// Wait for events
+			events, err := c.poller.Wait(100) // 100ms timeout
 			if err != nil {
-				if err == unix.EINTR {
-					continue
-				}
-				logger.Err(fmt.Sprintf("epoll wait error: %v", err))
-				break
+				c.log.Error("Poll error: %v", err)
+				continue
 			}
 
-			for ev := 0; ev < nevents; ev++ {
-				fd := int(events[ev].Fd)
+			for _, event := range events {
+				fd := event.FD
 
-				if fd == timerFd {
+				if fd == c.timer.GetFD() {
 					// Handle timer event - toggle LED
-					var timeoutCount uint64
-					unix.Read(timerFd, (*(*[8]byte)(unsafe.Pointer(&timeoutCount)))[:])
-
+					c.timer.Read()
 					ledState = !ledState
-					setLED(ledPin, ledState)
+					c.led.SetState(ledState)
 
-				} else {
-					// Determine which button was pressed
-					var buttonPin string
-					for pin, buttonFd := range buttonFds {
-						if buttonFd == fd {
-							buttonPin = pin
-							break
+				} else if fd == c.k1.GetFD() {
+					// K1 button - increase frequency
+					newState, err := c.k1.ReadState()
+					if err != nil {
+						c.log.Error("Failed to read K1 state: %v", err)
+						continue
+					}
+
+					oldState := c.k1.IsPressed()
+					c.k1.SetPressed(newState)
+
+					c.log.Info("K1 button state change: %v -> %v", oldState, newState)
+
+					if newState && !oldState {
+						// Button pressed
+						c.log.Info("K1 button pressed - increasing frequency")
+						increaseFreq()
+
+						// Start auto-repeat timer
+						c.k1Timer = time.AfterFunc(autoRepeatDelay, func() {
+							c.k1Ticker = time.NewTicker(autoRepeatInterval)
+							go func() {
+								for range c.k1Ticker.C {
+									if c.k1.IsPressed() {
+										increaseFreq()
+									} else {
+										c.k1Ticker.Stop()
+										break
+									}
+								}
+							}()
+						})
+
+					} else if !newState && oldState {
+						// Button released
+						c.log.Info("K1 button released")
+						if c.k1Timer != nil {
+							c.k1Timer.Stop()
+						}
+						if c.k1Ticker != nil {
+							c.k1Ticker.Stop()
 						}
 					}
 
-					if buttonPin != "" {
-						// Read button state
-						var buf [8]byte
-						unix.Seek(fd, 0, 0)
-						unix.Read(fd, buf[:])
+				} else if fd == c.k2.GetFD() {
+					// K2 button - reset frequency
+					newState, err := c.k2.ReadState()
+					if err != nil {
+						c.log.Error("Failed to read K2 state: %v", err)
+						continue
+					}
 
-						val, _ := strconv.Atoi(string(buf[0]))
-						newState := val == 1
-						oldState := buttonState[buttonPin]
-						buttonState[buttonPin] = newState
+					oldState := c.k2.IsPressed()
+					c.k2.SetPressed(newState)
 
-						// Debug output
-						logger.Info(fmt.Sprintf("Button %s state change: %v -> %v", buttonPin, oldState, newState))
+					c.log.Info("K2 button state change: %v -> %v", oldState, newState)
 
-						if newState && !oldState {
-							// Button pressed
-							switch buttonPin {
-							case k1Pin:
-								// Increase frequency
-								logger.Info("K1 button pressed - increasing frequency")
-								increaseFreq()
+					if newState && !oldState {
+						c.log.Info("K2 button pressed - resetting frequency")
+						resetFreq()
+					}
 
-								// Start auto-repeat timer
-								k1Timer = time.AfterFunc(autoRepeatDelay, func() {
-									k1Ticker = time.NewTicker(autoRepeatInterval)
-									go func() {
-										for range k1Ticker.C {
-											if buttonState[k1Pin] {
-												increaseFreq()
-											} else {
-												k1Ticker.Stop()
-												break
-											}
-										}
-									}()
-								})
+				} else if fd == c.k3.GetFD() {
+					// K3 button - decrease frequency
+					newState, err := c.k3.ReadState()
+					if err != nil {
+						c.log.Error("Failed to read K3 state: %v", err)
+						continue
+					}
 
-							case k2Pin:
-								// Reset frequency
-								logger.Info("K2 button pressed - resetting frequency")
-								resetFreq()
+					oldState := c.k3.IsPressed()
+					c.k3.SetPressed(newState)
 
-							case k3Pin:
-								// Decrease frequency
-								logger.Info("K3 button pressed - decreasing frequency")
-								decreaseFreq()
+					c.log.Info("K3 button state change: %v -> %v", oldState, newState)
 
-								// Start auto-repeat timer
-								k3Timer = time.AfterFunc(autoRepeatDelay, func() {
-									k3Ticker = time.NewTicker(autoRepeatInterval)
-									go func() {
-										for range k3Ticker.C {
-											if buttonState[k3Pin] {
-												decreaseFreq()
-											} else {
-												k3Ticker.Stop()
-												break
-											}
-										}
-									}()
-								})
-							}
+					if newState && !oldState {
+						// Button pressed
+						c.log.Info("K3 button pressed - decreasing frequency")
+						decreaseFreq()
 
-						} else if !newState && oldState {
-							// Button released
-							logger.Info(fmt.Sprintf("Button %s released", buttonPin))
-							switch buttonPin {
-							case k1Pin:
-								if k1Timer != nil {
-									k1Timer.Stop()
+						// Start auto-repeat timer
+						c.k3Timer = time.AfterFunc(autoRepeatDelay, func() {
+							c.k3Ticker = time.NewTicker(autoRepeatInterval)
+							go func() {
+								for range c.k3Ticker.C {
+									if c.k3.IsPressed() {
+										decreaseFreq()
+									} else {
+										c.k3Ticker.Stop()
+										break
+									}
 								}
-								if k1Ticker != nil {
-									k1Ticker.Stop()
-								}
+							}()
+						})
 
-							case k3Pin:
-								if k3Timer != nil {
-									k3Timer.Stop()
-								}
-								if k3Ticker != nil {
-									k3Ticker.Stop()
-								}
-							}
+					} else if !newState && oldState {
+						// Button released
+						c.log.Info("K3 button released")
+						if c.k3Timer != nil {
+							c.k3Timer.Stop()
+						}
+						if c.k3Ticker != nil {
+							c.k3Ticker.Stop()
 						}
 					}
 				}
