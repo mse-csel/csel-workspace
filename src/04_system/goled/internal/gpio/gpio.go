@@ -24,6 +24,7 @@
 package gpio
 
 import (
+	"csel1/goled/pkg/utils"
 	"fmt"
 	"os"
 	"time"
@@ -37,8 +38,15 @@ const (
 
 // Setup configures a GPIO pin
 func Setup(pin, direction string, edge string) error {
-	// Unexport first to ensure clean state
-	_ = os.WriteFile(gpioUnexport, []byte(pin), 0644)
+	if !utils.IsValidGPIO(pin) {
+		return fmt.Errorf("invalid GPIO pin: %s", pin)
+	}
+
+	// If already exported, unexport first
+	if utils.IsGPIOExported(pin) {
+		_ = os.WriteFile(gpioUnexport, []byte(pin), 0644)
+		time.Sleep(100 * time.Millisecond)
+	}
 
 	// Export the pin
 	if err := os.WriteFile(gpioExport, []byte(pin), 0644); err != nil {

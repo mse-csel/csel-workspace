@@ -32,6 +32,7 @@ import (
 	"csel1/goled/internal/gpio"
 	"csel1/goled/internal/logger"
 	"csel1/goled/internal/timer"
+	"csel1/goled/pkg/utils"
 )
 
 const (
@@ -187,8 +188,11 @@ func NewController(log *logger.Logger, led *gpio.LED, timer *timer.Timer, k1, k2
 
 // SetFrequency sets the LED blinking frequency
 func (c *Controller) SetFrequency(freq float64) {
-	c.currentFreq = freq
-	c.timer.SetPeriod(time.Duration(1e9 / freq))
+	// Clamp the frequency to valid range
+	c.currentFreq = utils.ClampFrequency(freq, c.minFreq, c.maxFreq)
+	period := utils.CalculateBlinkPeriod(c.currentFreq)
+	c.timer.SetPeriod(time.Duration(period))
+	c.log.Info("Set frequency to %s", utils.FormatFrequency(c.currentFreq))
 }
 
 // Cleanup releases all resources
