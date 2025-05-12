@@ -37,46 +37,63 @@ void comm_process(){
         exit(EXIT_FAILURE);
     }
 
-
     // Créer un socket pair
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == -1) {
         perror("socketpair");
         exit(EXIT_FAILURE);
     }
 
+    // setup capturing signals
+    struct sigaction act = {
+        .sa_handler = catch_signal,
+        .sa_flags = 0
+    };
+    sigemptyset(&act.sa_mask);
+
+    // Set up signal handlers for the signals we want to catch
+    int signals[] = {SIGHUP, SIGINT, SIGQUIT,
+                    SIGABRT, SIGTERM};
+    int num_signals = sizeof(signals)/sizeof(signals[0]);   
+
+    for (int i = 0; i < num_signals; i++){
+        if (sigaction(signals[i], &act, NULL) == -1) {
+            perror("sigaction");
+            exit(EXIT_FAILURE);
+        }
+        
+    }
+
+    printf("Signal handlers set up. PID: %d\n", getpid());
+
+    // Fork with all previous data
     pid_t pid = fork();
 
     // les deux processus tournent en parallèle
     if (pid == 0){ //enfant 
-
-        printf("child process\n");
+        printf("child process %d\n", getpid());
         while(1){ //send a few messages before exiting
             char msg[100];
-
             sprintf(msg, "hello from child process");
             close(fd[0]); // close unused read descriptor
             write (fd[1], msg, sizeof(msg));
-            sleep(10);
-
-
+            sleep(3);
 
             // send exit message
             sprintf(msg, "exits");
             close(fd[0]); // close unused read descriptor
             write (fd[1], msg, sizeof(msg));
-            sleep(1);
-
-
-
-
+            sleep(3);
         }
     }
     else if (pid>0){ //parent
-        printf("parent process\n");
+        printf("parent process %d\n", getpid());
         while(1){
             char msg[100];
             close(fd[1]); // close unused write descriptor
-            int len = read (fd[0], msg, sizeof(msg));
+            int len;
+            while (((len = read(fd[0], msg, sizeof(msg) - 1)) == -1) 
+            && (errno == EINTR)) {}
+
             if (len > 0) {
                 msg[len] = '\0'; // Null-terminate the string
                 printf("Received message: %s\n", msg);
@@ -90,20 +107,7 @@ void comm_process(){
                 printf("Exiting parent process\n");
                 break;
             }
-
-            // Capture signals
-            struct sigaction act = {
-                .sa_handler = catch_signal,
-                .sa_flags = 0
-            };
-            sigemptyset(&act.sa_mask);
-
-            int err = sigaction (SIGINT, &act, NULL);
-            if (err == -1) {
-                perror("sigaction");
-                exit(EXIT_FAILURE);
-            }
-
+            
         }
     }
     else{//error
@@ -115,8 +119,16 @@ void comm_process(){
 }
 
 void catch_signal(int sig){
-    printf("Signal %d received\n", sig);
+    printf("\nSignal %d received\n", sig);
     // Handle the signal here
+
+    //re-install signal handler
+    struct sigaction act = {
+        .sa_handler = catch_signal,
+        .sa_flags = 0
+    };
+    sigemptyset(&act.sa_mask);
+    sigaction(sig, &act, NULL);
 }
 
 

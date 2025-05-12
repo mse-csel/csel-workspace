@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <string.h>
+#include <errno.h>
 
 
 extern void comm_process();
