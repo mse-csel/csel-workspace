@@ -28,8 +28,8 @@
 #ifndef COMMUNICATION_H
 #define COMMUNICATION_H
 
-#define _POSIX_C_SOURCE 200809L // define before includes
-#define _GNU_SOURCE // define before includes
+#define _GNU_SOURCE // define before includes for CPU_SET
+#define _POSIX_C_SOURCE 200809L // define before includes for act
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -40,6 +40,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sched.h>
+
 
 
 
