@@ -28,6 +28,9 @@
 #ifndef COMMUNICATION_H
 #define COMMUNICATION_H
 
+#define _POSIX_C_SOURCE 200809L // define before includes
+#define _GNU_SOURCE // define before includes
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -38,11 +41,12 @@
 #include <errno.h>
 #include <sched.h>
 
-#define _GNU_SOURCE
+
+
 
 extern void comm_process();
-static void catch_signal(int sig);
-static void  send_message(int fd, const char *message);
+extern void catch_signal(int sig);
+extern void  send_message(int fd, const char *message);
 
 
 
