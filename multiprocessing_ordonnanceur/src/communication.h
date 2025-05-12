@@ -20,17 +20,23 @@
  * Purpose: NanoPi silly status led control system
  *
  * Author:  Jonathan Amez-Droz
- * Date:    11.04.2025
+ * Date:    12.05.2025
  */
 
 
-/* Switches pining
-* k1 gpio_a.0-k1 
-* k2 gpio_a.2-k2
-* k3 gpio_a.3-k3
-*/
+
 #ifndef COMMUNICATION_H
 #define COMMUNICATION_H
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+
+extern void comm_process();
+
 
 
 #endif // COMMUNICATION_H

@@ -20,33 +20,68 @@
  * Purpose: NanoPi silly status led control system
  *
  * Author:  Jonathan Amez-Droz
- * Date:    11.04.2025
+ * Date:    12.05.2025
  */
 
-#include "switch_control.h"
+#include "communication.h"
 
-int open_switch(const char *pin, const char *gpio_path){
-    // unexport pin out of sysfs (reinitialization)
-    int f = open(GPIO_UNEXPORT, O_WRONLY);
-    write(f, pin, strlen(pin));
-    close(f);
+void comm_process(){
+    int sockets[2];
+    int fd[2];
 
-    // export pin to sysfs
-    f = open(GPIO_EXPORT, O_WRONLY);
-    write(f, pin, strlen(pin));
-    close(f);
+    int err = pipe(fd);
+    if (err == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
 
-    // config pin
-    char gpio_dir[50];
-    snprintf(gpio_dir, 50, "%s/direction", gpio_path);
-    f = open(gpio_dir, O_WRONLY);
-    write(f, "in", 3);
-    close(f);
 
-    char gpio_value[50];
-    snprintf(gpio_value, 50, "%s/value",  gpio_path);
-    // open gpio value attribute
-    f = open(gpio_value, O_RDONLY);
-    return f;
+    // Créer un socket pair
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == -1) {
+        perror("socketpair");
+        exit(EXIT_FAILURE);
+    }
+
+    pid_t pid = fork();
+
+    // les deux processus tournent en parallèle
+    if (pid == 0){ //enfant 
+
+        printf("child process\n");
+        while(1){ //send a few messages before exiting
+            char msg[100];
+            sprintf(msg, "hello from child process");
+            close(fd[0]); // close unused read descriptor
+            write (fd[1], msg, sizeof(msg));
+            sleep(1);
+
+
+        }
+    }
+    else if (pid>0){ //parent
+        printf("parent process\n");
+        while(1){
+            char msg[100];
+            close(fd[1]); // close unused write descriptor
+            int len = read (fd[0], msg, sizeof(msg));
+            if (len > 0) {
+                msg[len] = '\0'; // Null-terminate the string
+                printf("Received message: %s\n", msg);
+            }
+            else{
+                perror("read");
+                exit(EXIT_FAILURE);
+            }
+
+        }
+    }
+    else{//error
+        perror("fork");
+        exit(EXIT_FAILURE);
+    } 
+
 
 }
+
+
+
