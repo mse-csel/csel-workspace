@@ -71,25 +71,49 @@ void comm_process(){
     // les deux processus tournent en parallèle
     if (pid == 0){ //enfant 
         printf("child process %d\n", getpid());
-        while(1){ //send a few messages before exiting
-            char msg[100];
-            sprintf(msg, "hello from child process");
-            close(fd[0]); // close unused read descriptor
-            write (fd[1], msg, sizeof(msg));
-            sleep(3);
+        close(fd[0]); // close unused read descriptor
 
-            // send exit message
-            sprintf(msg, "exits");
-            close(fd[0]); // close unused read descriptor
-            write (fd[1], msg, sizeof(msg));
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(1, &cpuset); // Lier le processus au cœur 1
+
+        if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) == -1) {
+            perror("sched_setaffinity");
+            exit(EXIT_FAILURE);
+        }
+
+        // Array of messages to send
+        const char *messages[] = {
+            "hello from child process",
+            "CSEL c'est super",
+            "They are taking the hobbits to Isengard",
+            "42",
+            "J'ai perdu!",
+            "exits",
+            "Oups c'est pas ça",
+            "exist",
+            "toujours pas ça",
+            "Comment on quitte???",
+            "Ah oui je sais!",
+            "Bye :D",
+            "exit"
+        };
+
+        int num_messages = sizeof(messages) / sizeof(messages[0]);
+
+        // Loop over the messages and send them
+        for (int i = 0; i < num_messages; i++) {
+            send_message(fd[1], messages[i]);
             sleep(3);
         }
+        exit(EXIT_FAILURE); // should never reach here
+
     }
     else if (pid>0){ //parent
         printf("parent process %d\n", getpid());
+        close(fd[1]); // close unused write descriptor
         while(1){
             char msg[100];
-            close(fd[1]); // close unused write descriptor
             int len;
             while (((len = read(fd[0], msg, sizeof(msg) - 1)) == -1) 
             && (errno == EINTR)) {}
@@ -119,7 +143,8 @@ void comm_process(){
 }
 
 void catch_signal(int sig){
-    printf("\nSignal %d received\n", sig);
+    printf("Signal %d received\n", sig);
+    printf("You have no power here!\n");
     // Handle the signal here
 
     //re-install signal handler
@@ -129,6 +154,14 @@ void catch_signal(int sig){
     };
     sigemptyset(&act.sa_mask);
     sigaction(sig, &act, NULL);
+}
+
+void send_message(int fd, const char *message) {
+    // Send the message to the other process
+    if (write(fd, message, strlen(message) + 1) == -1) {
+        perror("write");
+        exit(EXIT_FAILURE);
+    }
 }
 
 

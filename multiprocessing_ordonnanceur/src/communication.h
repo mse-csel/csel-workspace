@@ -36,10 +36,13 @@
 #include <signal.h>
 #include <string.h>
 #include <errno.h>
+#include <sched.h>
 
+#define _GNU_SOURCE
 
 extern void comm_process();
 static void catch_signal(int sig);
+static void  send_message(int fd, const char *message);
 
 
 

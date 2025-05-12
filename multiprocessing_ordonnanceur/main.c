@@ -2,9 +2,15 @@
 #include <stdio.h>
 
 
+#include "app_config.h"
+#include "communication.h"
 
-int main(int argc, char** argv){
-    printf("hello there\n");
+int main(){
+    //printf("hello there\n");
+
+    #ifdef COMMUNICATION
+    comm_process();
+    #endif
 
     return 0;
 }
