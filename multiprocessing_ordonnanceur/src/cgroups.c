@@ -22,3 +22,28 @@
  * Author:  Jonathan Amez-Droz
  * Date:    12.05.2025
  */
+
+ #include "cgroups.h"
+
+ void mount_cgroup(){
+    // mount cgroup filesystem
+    if(mount("none", "/sys/fs/cgroup", "tmpfs", 0, NULL ) == -1){
+        perror("mount cgroup");
+        exit(EXIT_FAILURE);
+    }
+    mkdir("/tmp/maison", 0777);
+    struct stat st = {0};
+    // create directory
+  //  if (stat("/sys/fs/cgroup/memory", &st) == -1) {
+        mkdir("/sys/fs/cgroup/memory", 0777);
+//    }
+
+
+    if(mount("memory", "/sys/fs/cgroup/memory", "cgroup", 0, "memory" ) == -1){
+        perror("mount memory");
+        exit(EXIT_FAILURE);
+    }
+    if (stat("/sys/fs/cgroup/memory/mem", &st) == -1) {
+        mkdir("/sys/fs/cgroup/memory/mem", 0700);
+    }
+ }
