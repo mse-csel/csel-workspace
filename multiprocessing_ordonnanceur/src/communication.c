@@ -22,10 +22,8 @@
  * Author:  Jonathan Amez-Droz
  * Date:    12.05.2025
  */
-
-#define _POSIX_C_SOURCE 200809L
 #include "communication.h"
-#include <signal.h>
+
 
 void comm_process(){
     int sockets[2];
@@ -70,9 +68,23 @@ void comm_process(){
 
     // les deux processus tournent en parallèle
     if (pid == 0){ //enfant 
+
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(1, &cpuset); // Lier le processus au cœur 1
+        if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) == -1) {
+            perror("sched_setaffinity");
+            exit(EXIT_FAILURE);
+        }
         printf("child process %d\n", getpid());
         close(fd[0]); // close unused read descriptor
 
+        printf("Process %d's CPU Affinity: ", getpid());
+        for (int i = 0; i < CPU_SETSIZE; i++) {
+            if (CPU_ISSET(i, &cpuset)) {
+                printf("%d \n", i);
+            }
+        }
 
         // Array of messages to send
         const char *messages[] = {
@@ -96,14 +108,29 @@ void comm_process(){
         // Loop over the messages and send them
         for (int i = 0; i < num_messages; i++) {
             send_message(fd[1], messages[i]);
-            sleep(3);
+            sleep(0);
         }
+
         exit(EXIT_FAILURE); // should never reach here
 
     }
     else if (pid>0){ //parent
         printf("parent process %d\n", getpid());
         close(fd[1]); // close unused write descriptor
+
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(0, &cpuset); // Lier le processus au cœur 1
+        if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) == -1) {
+            perror("sched_setaffinity");
+            exit(EXIT_FAILURE);
+        }
+        printf("Process %d's CPU Affinity: ", getpid());
+        for (int i = 0; i < CPU_SETSIZE; i++) {
+            if (CPU_ISSET(i, &cpuset)) {
+                printf("%d \n", i);
+            }
+        }
         while(1){
             char msg[100];
             int len;
@@ -112,7 +139,7 @@ void comm_process(){
 
             if (len > 0) {
                 msg[len] = '\0'; // Null-terminate the string
-                printf("Received message: %s\n", msg);
+                printf("Received message: %s", msg);
             }
             else{
                 perror("read");
@@ -120,9 +147,10 @@ void comm_process(){
             }
             // exit signal received from child
             if (strcmp(msg, "exit") == 0) {
-                printf("Exiting parent process\n");
+                printf("\nExiting parent process\n");
                 break;
             }
+            printf("\n");
             
         }
     }
