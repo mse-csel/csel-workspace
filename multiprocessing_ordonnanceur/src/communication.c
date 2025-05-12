@@ -23,7 +23,9 @@
  * Date:    12.05.2025
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "communication.h"
+#include <signal.h>
 
 void comm_process(){
     int sockets[2];
@@ -50,10 +52,21 @@ void comm_process(){
         printf("child process\n");
         while(1){ //send a few messages before exiting
             char msg[100];
+
             sprintf(msg, "hello from child process");
             close(fd[0]); // close unused read descriptor
             write (fd[1], msg, sizeof(msg));
+            sleep(10);
+
+
+
+            // send exit message
+            sprintf(msg, "exits");
+            close(fd[0]); // close unused read descriptor
+            write (fd[1], msg, sizeof(msg));
             sleep(1);
+
+
 
 
         }
@@ -72,6 +85,24 @@ void comm_process(){
                 perror("read");
                 exit(EXIT_FAILURE);
             }
+            // exit signal received from child
+            if (strcmp(msg, "exit") == 0) {
+                printf("Exiting parent process\n");
+                break;
+            }
+
+            // Capture signals
+            struct sigaction act = {
+                .sa_handler = catch_signal,
+                .sa_flags = 0
+            };
+            sigemptyset(&act.sa_mask);
+
+            int err = sigaction (SIGINT, &act, NULL);
+            if (err == -1) {
+                perror("sigaction");
+                exit(EXIT_FAILURE);
+            }
 
         }
     }
@@ -81,6 +112,11 @@ void comm_process(){
     } 
 
 
+}
+
+void catch_signal(int sig){
+    printf("Signal %d received\n", sig);
+    // Handle the signal here
 }
 
 

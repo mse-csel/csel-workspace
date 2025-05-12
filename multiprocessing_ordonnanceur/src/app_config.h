@@ -23,23 +23,8 @@
  * Date:    12.05.2025
  */
 
+#ifndef APP_CONFIG_H
+#define APP_CONFIG_H
 
-
-#ifndef COMMUNICATION_H
-#define COMMUNICATION_H
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <signal.h>
-#include <string.h>
-
-
-extern void comm_process();
-static void catch_signal(int sig);
-
-
-
-#endif // COMMUNICATION_H
+#define COMMUNICATION 1
+#endif // APP_CONFIG_H
