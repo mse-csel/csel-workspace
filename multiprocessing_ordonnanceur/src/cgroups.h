@@ -22,10 +22,8 @@
  * Author:  Jonathan Amez-Droz
  * Date:    12.05.2025
  */
+#ifndef CGROUPS_H_
+#define CGROUPS_H_
 
-#ifndef APP_CONFIG_H
-#define APP_CONFIG_H
 
-//#define COMMUNICATION 1
-#define CGROUPS 1
-#endif // APP_CONFIG_H
+#endif // CGROUPS_H_
