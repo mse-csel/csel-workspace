@@ -73,14 +73,6 @@ void comm_process(){
         printf("child process %d\n", getpid());
         close(fd[0]); // close unused read descriptor
 
-        cpu_set_t cpuset;
-        CPU_ZERO(&cpuset);
-        CPU_SET(1, &cpuset); // Lier le processus au cœur 1
-
-        if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) == -1) {
-            perror("sched_setaffinity");
-            exit(EXIT_FAILURE);
-        }
 
         // Array of messages to send
         const char *messages[] = {
