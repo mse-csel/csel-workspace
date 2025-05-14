@@ -31,8 +31,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <string.h>
+#include <fcntl.h>
 
 extern void mount_cgroup();
+extern void write_limit(char* limit);
+extern int allocate_memory(int num_blocks, int block_size);
 
 
 #endif // CGROUPS_H_

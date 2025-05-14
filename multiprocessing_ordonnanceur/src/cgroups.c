@@ -31,19 +31,53 @@
         perror("mount cgroup");
         exit(EXIT_FAILURE);
     }
-    mkdir("/tmp/maison", 0777);
     struct stat st = {0};
     // create directory
-  //  if (stat("/sys/fs/cgroup/memory", &st) == -1) {
+    if (stat("/sys/fs/cgroup/memory", &st) == -1) {
         mkdir("/sys/fs/cgroup/memory", 0777);
-//    }
+    }
 
 
     if(mount("memory", "/sys/fs/cgroup/memory", "cgroup", 0, "memory" ) == -1){
         perror("mount memory");
         exit(EXIT_FAILURE);
     }
+    // création du groupe de contrôle "mem"
     if (stat("/sys/fs/cgroup/memory/mem", &st) == -1) {
         mkdir("/sys/fs/cgroup/memory/mem", 0700);
     }
+ }
+
+ void write_limit(char* limit){
+    int fd  = open("/sys/fs/cgroup/memory/mem/memory.limit_in_bytes", O_WRONLY);
+    int i = write(fd, limit, strlen(limit));
+    if (i == -1) {
+        perror("write");
+        exit(EXIT_FAILURE);
+    }
+    close(fd);
+ }
+
+ int allocate_memory(int num_blocks, int block_size) {
+    void *blocks[num_blocks];
+
+    for (int i = 0; i < num_blocks; i++) {
+        blocks[i] = malloc(block_size);
+        if (blocks[i] == NULL) {
+            perror("Failed to allocate memory");
+            return 1;
+        }
+        printf("Allocated block %d\n", i);
+        memset(blocks[i], 0, block_size);
+    }
+
+    // Garder le programme en cours d'exécution pour observer l'utilisation de la mémoire
+    getchar();
+
+    // Libérer la mémoire
+    for (int i = 0; i < num_blocks; i++) {
+        free(blocks[i]);
+    }
+    return 0;
+    // 
  }

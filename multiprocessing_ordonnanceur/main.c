@@ -15,6 +15,8 @@ int main(){
 
     #ifdef CGROUPS
     mount_cgroup();
+    write_limit("60M");
+    allocate_memory(50, 1024*1024);
     #endif
 
     return 0;
