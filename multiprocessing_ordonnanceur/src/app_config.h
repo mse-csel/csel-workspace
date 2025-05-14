@@ -27,5 +27,7 @@
 #define APP_CONFIG_H
 
 //#define COMMUNICATION 1
-#define CGROUPS 1
+//#define CGROUPS 1
+//#define CPU_LIMIT 1
+#define CPU_SHARE 1
 #endif // APP_CONFIG_H

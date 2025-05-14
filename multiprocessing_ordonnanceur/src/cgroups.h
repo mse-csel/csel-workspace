@@ -34,9 +34,14 @@
 #include <string.h>
 #include <fcntl.h>
 
-extern void mount_cgroup();
-extern void write_limit(char* limit);
+#define CGROUPS_PATH "/sys/fs/cgroup"
+
+extern void mount_cgroup_memory();
+extern void mount_cgroup_cpu();
+extern void write_limit_memory(char* limit);
+extern void write_limit_cpu();
 extern int allocate_memory(int num_blocks, int block_size);
+extern void use_cpu();
 
 
 #endif // CGROUPS_H_

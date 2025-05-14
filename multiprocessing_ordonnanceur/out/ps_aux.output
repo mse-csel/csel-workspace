@@ -1,0 +1,4 @@
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root       280 99.7  0.0   1872   196 pts/2    R+   00:05   4:20 ./app
+root       281  100  0.0   1872   192 pts/1    R+   00:05   4:17 ./app
+root       300  0.0  0.0   2724   340 pts/0    R+   00:09   0:00 ps aux r

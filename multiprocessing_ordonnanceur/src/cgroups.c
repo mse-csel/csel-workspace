@@ -25,9 +25,9 @@
 
  #include "cgroups.h"
 
- void mount_cgroup(){
+ void mount_cgroup_memory(){
     // mount cgroup filesystem
-    if(mount("none", "/sys/fs/cgroup", "tmpfs", 0, NULL ) == -1){
+    if(mount("none", CGROUPS_PATH, "tmpfs", 0, NULL ) == -1){
         perror("mount cgroup");
         exit(EXIT_FAILURE);
     }
@@ -48,7 +48,9 @@
     }
  }
 
- void write_limit(char* limit){
+
+
+ void write_limit_memory(char* limit){
     int fd  = open("/sys/fs/cgroup/memory/mem/memory.limit_in_bytes", O_WRONLY);
     int i = write(fd, limit, strlen(limit));
     if (i == -1) {
@@ -81,3 +83,60 @@
     return 0;
     // 
  }
+
+ void mount_cgroup_cpu(){
+    // mount cgroup filesystem
+    if(mount("none", CGROUPS_PATH, "tmpfs", 0, NULL ) == -1){
+        perror("mount cgroup");
+        exit(EXIT_FAILURE);
+    }
+    struct stat st = {0};
+    // create directory
+    if (stat("/sys/fs/cgroup/cpuset", &st) == -1) {
+        mkdir("/sys/fs/cgroup/cpuset", 0777);
+    }
+
+    if(mount("cpu,cpuset", "/sys/fs/cgroup/cpuset", "cgroup", 0, "cpuset" ) == -1){
+        perror("mount memory");
+        exit(EXIT_FAILURE);
+    }
+    // création du groupe de contrôle "mem"
+    if (stat("/sys/fs/cgroup/cpuset/high", &st) == -1) {
+        mkdir("/sys/fs/cgroup/cpuset/high", 0700);
+    }
+    if (stat("/sys/fs/cgroup/cpuset/low", &st) == -1) {
+        mkdir("/sys/fs/cgroup/cpuset/low", 0700);
+    }
+
+ }
+
+ void write_limit_cpu(){
+    int fd  = open("/sys/fs/cgroup/cpuset/high/cpuset.cpus", O_WRONLY);
+    write(fd, "3", 1);
+    close(fd);
+
+    fd  = open("/sys/fs/cgroup/cpuset/high/cpuset.mems", O_WRONLY);
+    write(fd, "0", 1);
+    close(fd);
+
+    fd  = open("/sys/fs/cgroup/cpuset/low/cpuset.cpus", O_WRONLY);
+    write(fd, "2", 1);
+    close(fd);
+
+    fd  = open("/sys/fs/cgroup/cpuset/low/cpuset.mems", O_WRONLY);
+    write(fd, "0", 1);
+    close(fd);
+ }
+
+
+ void use_cpu(){
+    int i = 0;
+    while(1){
+        i++;
+        if(i>123456789){
+            printf("ça fait 123456789\n");
+            i = 0;
+        }
+    }
+ }
+
