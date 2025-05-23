@@ -18,23 +18,26 @@
  * Abstract: System programming - multi-process - ex1
  *
  * Purpose: Parent-child process communication using socketpair
+ * 
  * Child => Socketpair => Parent
  *             ^^^
  *           Messages
  * Producer               Consumer (print)
  * 
  * If the parent receives "exit" from the child, it terminates the program.
- * 
  * Ignores the following signals:
  * - SIGHUP
  * - SIGINT
  * - SIGQUIT
  * - SIGABRT
  * - SIGTERM
+ * The parent process sets its CPU affinity to CPU 0 and the child process to CPU 1.
  *
  * Autĥor:  Vincent Audergon, Bastien Veuthey
  * Date:    2025-05-23
  */
+
+#define _GNU_SOURCE
 
 #include <signal.h>
 #include <stdio.h>
@@ -46,6 +49,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sched.h>
 
 static const int kIgnoreSignals[] = {
     SIGHUP,  // Hangup
@@ -76,6 +80,21 @@ void catch_signal(int signo)
 {
     int pid = getpid();
     printf("Signal %d ignored from PID: %d\n", signo, pid);
+}
+
+/**
+ * Sets the CPU affinity for the calling process
+ * @param cpu_id The CPU ID to set affinity to (0 or 1 in the NanoPi)
+ */
+void set_cpu_affinity(int cpu_id)
+{
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu_id, &cpuset);
+    // 0 means the calling process
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) == -1) {
+        perror("set cpu affinity");
+    }
 }
 
 /**
@@ -160,9 +179,11 @@ int main()
     }
     pid_t pid = fork();
     if (pid == 0) {
+        set_cpu_affinity(1);
         close(socket_fd[0]);
         child_process(socket_fd[1]);
     } else if (pid > 0) {
+        set_cpu_affinity(0);
         close(socket_fd[1]);
         parent_process(socket_fd[0]);
         wait(NULL);
