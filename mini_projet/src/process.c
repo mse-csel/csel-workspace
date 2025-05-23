@@ -28,7 +28,8 @@ void epoll_process(long period){
     long delta_period = default_period * 10 / 100;  //10% of default period
     char buf;
     int led_status;
-    int timer_on_fd, timer_off_fd, status_led_fd, power_led_fd, k1_fd, k2_fd, k3_fd;
+    int status_led_fd, power_led_fd, k1_fd, k2_fd, k3_fd;
+    int timer_led_fd,timer_on_fd, timer_off_fd;
     int i, epoll_status, tmp_fd;
     long tmp_long;
     struct epoll_event events[MAX_EVENT_FOR_SINGLE_LOOP];
@@ -49,6 +50,11 @@ void epoll_process(long period){
     //timer to deactivate the led
     timer_off_fd = start_timer(current_period, DUTY_CYCLE_ON);
     add_to_epoll(epoll_fd, timer_off_fd, EPOLLIN | EPOLLPRI);
+
+    //timer to blink the led after presses
+    timer_led_fd = start_timer(0, 0);
+    add_to_epoll(epoll_fd, timer_led_fd, EPOLLIN | EPOLLPRI);
+
     //led fd
     status_led_fd = open_led(STATUS_LED, GPIO_STATUS_LED);
     power_led_fd = open_led(POWER_LED, GPIO_POWER_LED);
@@ -63,7 +69,6 @@ void epoll_process(long period){
                 if((tmp_fd == timer_on_fd) || (tmp_fd == timer_off_fd)){
                     read(tmp_fd, &tmp_long, sizeof(tmp_long));
                     write(status_led_fd, (led_status ? "1" : "0"), 1);
-                    write(power_led_fd, (led_status ? "1" : "0"), 1);
                     led_status = !led_status;
                 }else if((tmp_fd == k1_fd) || (tmp_fd == k2_fd) || (tmp_fd == k3_fd)){
                     lseek(tmp_fd, 0, SEEK_SET);
@@ -72,19 +77,33 @@ void epoll_process(long period){
                     if(tmp_fd == k1_fd){
                         current_period -= delta_period;
                         syslog(LOG_NOTICE, "increasing blinking frequency\n");
+                        write(power_led_fd, "1", 1);
+                        update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K1 pressed\n");
+
                     }else if(tmp_fd == k2_fd){
                         current_period = default_period;
                         syslog(LOG_NOTICE, "reset blinking frequency\n");
+                        write(power_led_fd, "1", 1);
+                        update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K2 pressed\n");
                     }else{
                         current_period += delta_period;
                         syslog(LOG_NOTICE, "lowering blinking frequency\n");
+                        write(power_led_fd, "1", 1);
+                        update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K3 pressed\n");
                     }
                     update_timer(timer_on_fd, current_period, 0);
                     update_timer(timer_off_fd, current_period, DUTY_CYCLE_ON);
-                }else{
+                }
+                else if(tmp_fd == timer_led_fd){
+                    read(tmp_fd, &tmp_long, sizeof(tmp_long));
+                    write(power_led_fd, "0", 1);
+                    update_timer(timer_led_fd, 0, 0);
+                    printf("timer led off\n");
+                }
+                else{
                     break;
                 }
             }

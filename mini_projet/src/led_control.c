@@ -33,7 +33,7 @@ int open_led(char *led, char *gpio_led){    // unexport pin out of sysfs (reinit
 
     // export pin to sysfs
     f = open(GPIO_EXPORT, O_WRONLY);
-    write(f, led, strlen(STATUS_LED));
+    write(f, led, strlen(led));
     close(f);
 
     char gpio_dir[50];

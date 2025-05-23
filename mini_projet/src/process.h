@@ -12,6 +12,8 @@
 #include "switch_control.h"
 #include "timer_control.h"
 
+#define LED_ON_TIME 50000000
+
 void silly_process(long period);
 void epoll_process(long period);
 void select_process(long period);
