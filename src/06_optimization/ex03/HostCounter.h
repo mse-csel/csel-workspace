@@ -15,8 +15,6 @@ class HostCounter
         int getNbOfHosts();
 
     private:
-        // check if host is already in the list
-        bool isNewHost(std::string hostname);
 
         std::set< std::string > myHosts;
 };
