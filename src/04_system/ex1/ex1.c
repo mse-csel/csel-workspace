@@ -18,16 +18,85 @@
  * Abstract: System programming - multi-process - ex1
  *
  * Purpose: Parent-child process communication using socketpair
+ * Child => Socketpair => Parent
+ *             ^^^
+ *           Messages
+ * Producer               Consumer (print)
+ * 
  *
  * Autĥor:  Vincent Audergon, Bastien Veuthey
  * Date:    2025-05-23
  */
 
 #include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
+/**
+ * @brief Function to handle the child process
+ * Produce messages that are sent to the parent process
+ * @param socket_fd The socket file descriptor for communication
+ */
+void child_process(int socket_fd)
+{
+    const char *messages[] = {
+        "Message 1 from child",
+        "Message 2 from child",
+        "Message 3 from child"
+    };
+    for (int i = 0; i < sizeof(messages) / sizeof(messages[0]); ++i) {
+        send(socket_fd, messages[i], strlen(messages[i]), 0);
+        sleep(1); // Simulate some delay
+    }
+    close(socket_fd);
+}
 
+/**
+ * @brief Function to handle the parent process
+ * Receives messages from the child process and prints them
+ * @param socket_fd The socket file descriptor for communication
+ */
+void parent_process(int socket_fd)
+{
+    char buffer[256];
+    ssize_t bytes_received;
+    while (1) {
+        bytes_received = recv(socket_fd, buffer, sizeof(buffer) - 1, 0);
+        if (bytes_received <= 0) {
+            break;
+        }
+        buffer[bytes_received] = '\0'; // Null-terminate the string
+        printf("Received: %s\n", buffer);
+    }
+}
+
+/**
+ * @brief Main function
+ * Creates a socketpair for communication between parent and child processes
+ */
 int main()
 {
-    printf("Hello world!\n");
+    int socket_fd[2];
+    int err = socketpair(AF_UNIX, SOCK_STREAM, 0, socket_fd);
+    if (err == -1) {
+        perror("socketpair");
+        return 1;
+    }
+    pid_t pid = fork();
+    if (pid == 0) {
+        close(socket_fd[0]); // Close the parent socket
+        child_process(socket_fd[1]);
+        close(socket_fd[1]); // Close the child socket
+    } else if (pid > 0) {
+        close(socket_fd[1]); // Close the child socket
+        parent_process(socket_fd[0]);
+        close(socket_fd[0]); // Close the parent socket
+        wait(NULL);
+    } else {
+        perror("fork failed");
+        return 1;
+    }
     return 0;
 }
