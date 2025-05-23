@@ -28,12 +28,6 @@
 
 /**
  * Sleep that is safe from EINTR signal.
- * @param ms milliseconds to sleep
- */
-void safe_sleep_ms(int ms);
-
-/**
- * Sleep that is safe from EINTR signal.
  * @param s seconds to sleep
  */
 void safe_sleep_s(int s);
