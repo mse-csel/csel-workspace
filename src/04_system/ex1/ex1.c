@@ -23,6 +23,8 @@
  *           Messages
  * Producer               Consumer (print)
  * 
+ * If the parent receives "exit" from the child, it terminates the program.
+ * 
  *
  * Autĥor:  Vincent Audergon, Bastien Veuthey
  * Date:    2025-05-23
@@ -44,7 +46,8 @@ void child_process(int socket_fd)
     const char *messages[] = {
         "Message 1 from child",
         "Message 2 from child",
-        "Message 3 from child"
+        "Message 3 from child",
+        "exit"
     };
     for (int i = 0; i < sizeof(messages) / sizeof(messages[0]); ++i) {
         send(socket_fd, messages[i], strlen(messages[i]), 0);
@@ -68,6 +71,10 @@ void parent_process(int socket_fd)
             break;
         }
         buffer[bytes_received] = '\0'; // Null-terminate the string
+        if (strcmp(buffer, "exit") == 0) {
+            printf("Child process sent exit command. Exiting...\n");
+            break;
+        }
         printf("Received: %s\n", buffer);
     }
 }
