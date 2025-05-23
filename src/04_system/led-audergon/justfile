@@ -1,0 +1,21 @@
+default:
+  @just --list
+
+# Build the project
+build flag="":
+    cmake -S . -B build {{flag}}
+    cmake --build build
+
+# Clean the build directory
+clean:
+    rm -rf 
+
+# Run cppcheck on the source code
+cppcheck:
+   cppcheck . -ibuild 
+
+# Build and run the project on the target machine (through SSH)
+run:
+    just build
+    ssh -t root@192.168.0.14 '/workspace/src/04_system/led-audergon/build/led'
+
