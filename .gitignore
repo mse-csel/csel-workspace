@@ -31,3 +31,5 @@ src/03_drivers/sample01/main3
 .zig-cache
 
 src/**/build
+
+access_log_NASA_*

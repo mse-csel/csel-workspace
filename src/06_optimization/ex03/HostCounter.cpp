@@ -4,7 +4,7 @@ HostCounter::HostCounter()
 {
 }
 
-void HostCounter::notifyHost(std::string hostname)
+void HostCounter::notifyHost(const std::string& hostname)
 {
     myHosts.insert(hostname);
 }
