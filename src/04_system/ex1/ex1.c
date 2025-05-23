@@ -86,7 +86,7 @@ void catch_signal(int signo)
 
 /**
  * Sets the CPU affinity for the calling process
- * @param cpu_id The CPU ID to set affinity to (0 or 1 in the NanoPi)
+ * @param cpu_id The CPU ID to set affinity to (0..3 for 4 CPUs)
  */
 void set_cpu_affinity(int cpu_id)
 {
