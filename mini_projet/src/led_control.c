@@ -1,3 +1,4 @@
+
 /**
  * Copyright 2018 University of Applied Sciences Western Switzerland / Fribourg
  *
@@ -23,7 +24,7 @@
  * Date:    07.11.2018
  */
 
-#include "silly_led_control.h"
+#include "led_control.h"
 
 int open_led(){
     // unexport pin out of sysfs (reinitialization)
@@ -45,4 +46,3 @@ int open_led(){
     f = open(GPIO_LED "/value", O_RDWR);
     return f;
 }
-

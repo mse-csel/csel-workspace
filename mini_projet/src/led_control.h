@@ -1,3 +1,4 @@
+
 #ifndef SILLY_LED_CONTROL_H
 #define SILLY_LED_CONTROL_H
 #include <fcntl.h>
@@ -12,7 +13,6 @@
 #define GPIO_UNEXPORT "/sys/class/gpio/unexport"
 #define GPIO_LED      "/sys/class/gpio/gpio10"
 #define LED           "10"
-
 
 int open_led(void);
 
