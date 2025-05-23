@@ -1,6 +1,6 @@
 #include <string>
 
-#include <set>
+#include <unordered_set>
 
 class HostCounter
 {
@@ -16,5 +16,5 @@ class HostCounter
 
     private:
 
-        std::set< std::string > myHosts;
+        std::unordered_set< std::string > myHosts;
 };
