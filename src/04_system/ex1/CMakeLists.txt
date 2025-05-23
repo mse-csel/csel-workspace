@@ -2,4 +2,4 @@ cmake_minimum_required(VERSION 3.28)
 project(ex4)
 
 include(../../nanopi.cmake)
-add_executable(ex1 ex1.c)
+add_executable(ex1 safesleep.c ex1.c)

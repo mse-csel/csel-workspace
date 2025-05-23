@@ -25,16 +25,58 @@
  * 
  * If the parent receives "exit" from the child, it terminates the program.
  * 
+ * Ignores the following signals:
+ * - SIGHUP
+ * - SIGINT
+ * - SIGQUIT
+ * - SIGABRT
+ * - SIGTERM
  *
  * Autĥor:  Vincent Audergon, Bastien Veuthey
  * Date:    2025-05-23
  */
 
+#include <signal.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/types.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <errno.h>
+
+static const int kIgnoreSignals[] = {
+    SIGHUP,  // Hangup
+    SIGINT,  // Interrupt (Ctrl+C)
+    SIGQUIT, // Quit (Ctrl+\)
+    SIGABRT, // Abort signal from abort()
+    SIGTERM  // Termination signal
+};
+
+/**
+ * Configures the signal handler for the specified signal
+ * @param signo The signal number to configure
+ * @param handler The signal handler function
+ */
+void config_signal(int signo, void (*handler)(int))
+{
+	struct sigaction act = { .sa_handler = handler,};
+    if (sigaction(signo, &act, NULL) == -1) {
+        perror("sigaction");
+    }
+}
+
+/**
+ * Signal handler function, prints the signal number and process ID
+ * @param signo The signal number
+ */
+void catch_signal(int signo)
+{
+    int pid = getpid();
+    printf("Signal %d ignored from PID: %d\n", signo, pid);
+}
 
 /**
  * @brief Function to handle the child process
@@ -49,11 +91,25 @@ void child_process(int socket_fd)
         "Message 3 from child",
         "exit"
     };
-    for (int i = 0; i < sizeof(messages) / sizeof(messages[0]); ++i) {
-        send(socket_fd, messages[i], strlen(messages[i]), 0);
-        sleep(1); // Simulate some delay
+    int num_messages = sizeof(messages) / sizeof(messages[0]);
+    ssize_t i = 0;
+    while (i < num_messages) {
+        ssize_t sent_bytes = send(socket_fd, messages[i], strlen(messages[i]), 0);
+        if (sent_bytes == -1) {
+            if (errno == EINTR) {
+                printf("send interrupted by signal, retrying...\n");
+                // Retry if interrupted by a signal
+                continue;
+            } else {
+                perror("send");
+                break;
+            }
+        }
+        i++;
+        safe_sleep_s(1); // Sleep for 1 second
     }
     close(socket_fd);
+    exit(EXIT_SUCCESS);
 }
 
 /**
@@ -67,8 +123,13 @@ void parent_process(int socket_fd)
     ssize_t bytes_received;
     while (1) {
         bytes_received = recv(socket_fd, buffer, sizeof(buffer) - 1, 0);
-        if (bytes_received <= 0) {
-            break;
+        if (bytes_received == -1) {
+            if (errno == EINTR) {
+                continue; // Retry if interrupted by a signal
+            } else {
+                perror("recv");
+                break; // Exit on error
+            }
         }
         buffer[bytes_received] = '\0'; // Null-terminate the string
         if (strcmp(buffer, "exit") == 0) {
@@ -77,6 +138,7 @@ void parent_process(int socket_fd)
         }
         printf("Received: %s\n", buffer);
     }
+    close(socket_fd);
 }
 
 /**
@@ -85,25 +147,28 @@ void parent_process(int socket_fd)
  */
 int main()
 {
+    // Ignore signals
+    for (size_t i = 0; i < sizeof(kIgnoreSignals) / sizeof(kIgnoreSignals[0]); ++i) {
+        config_signal(kIgnoreSignals[i], catch_signal);
+    }
+    // Create socketpair for inter-process communication
     int socket_fd[2];
     int err = socketpair(AF_UNIX, SOCK_STREAM, 0, socket_fd);
     if (err == -1) {
         perror("socketpair");
-        return 1;
+        return EXIT_FAILURE;
     }
     pid_t pid = fork();
     if (pid == 0) {
-        close(socket_fd[0]); // Close the parent socket
+        close(socket_fd[0]);
         child_process(socket_fd[1]);
-        close(socket_fd[1]); // Close the child socket
     } else if (pid > 0) {
-        close(socket_fd[1]); // Close the child socket
+        close(socket_fd[1]);
         parent_process(socket_fd[0]);
-        close(socket_fd[0]); // Close the parent socket
         wait(NULL);
     } else {
         perror("fork failed");
-        return 1;
+        return EXIT_FAILURE;
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
