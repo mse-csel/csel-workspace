@@ -42,13 +42,13 @@ int main() {
             break;
         }
         memset(blocks[i], 0, BLOCK_SIZE);
-        printf("Bloc %d allocated and filled with zeros\n", i);
+        printf("Block %d allocated and filled with zeros\n", i);
     }
     for (int i = 0; i < NUM_BLOCKS; ++i) {
         if (blocks[i] != NULL) {
             free(blocks[i]);
             blocks[i] = NULL;
-            printf("Bloc %d freed\n", i);
+            printf("Block %d freed\n", i);
         }
     }
     printf("OK\n");

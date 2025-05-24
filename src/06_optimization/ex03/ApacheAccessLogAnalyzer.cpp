@@ -28,7 +28,7 @@ void ApacheAccessLogAnalyzer::processFile()
     {
         // parse the log line to extract the hostname / ip address
         int space_pos = line.find_first_of(" ");
-        std::string hostname = line.substr(0, space_pos);
+        const std::string hostname = line.substr(0, space_pos);
 
         myHostCounter.notifyHost(hostname);
     }

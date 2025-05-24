@@ -25,8 +25,15 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
 
 int main() {
-    while(1) {} // Use 100% CPU
+    int status = fork();
+    if (status < 0) {
+        perror("fork");
+        return EXIT_FAILURE;
+    }
+    while(1); // Use 100% CPU
     return EXIT_SUCCESS;
 }
