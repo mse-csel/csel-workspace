@@ -9,6 +9,7 @@ GO_VERSION=1.24.1
 
 remove_go() {
     rm -rf /usr/local/go
+    rm -f /etc/profile.d/go.sh
 }
 
 install_go() {
@@ -26,6 +27,8 @@ install_go() {
     
     echo "Installing Go ${GO_VERSION} for ${ARCH}"
     curl -sSfL https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz | tar -C /usr/local -xz
+    echo "Go ${GO_VERSION} installed successfully"
+    echo "export PATH=\$PATH:/usr/local/go/bin" >> /etc/profile.d/go.sh
 }
 
 install_go
