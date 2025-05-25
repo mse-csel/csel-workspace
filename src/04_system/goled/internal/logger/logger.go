@@ -51,7 +51,7 @@ func New(tag string) (*Logger, error) {
 }
 
 // Info logs an informational message
-func (l *Logger) Info(format string, args ...interface{}) {
+func (l *Logger) Info(format string, args ...any) {
 	message := fmt.Sprintf(format, args...)
 
 	// Log only to syslog
@@ -61,7 +61,7 @@ func (l *Logger) Info(format string, args ...interface{}) {
 }
 
 // Error logs an error message
-func (l *Logger) Error(format string, args ...interface{}) {
+func (l *Logger) Error(format string, args ...any) {
 	message := fmt.Sprintf(format, args...)
 
 	// Log only to syslog
