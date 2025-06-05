@@ -18,25 +18,41 @@ module_param(prime_list, charp, 0);
 
 //--- global/static values
 
+static const int NOT_FOUND = 0;
+static const int IS_FOUND = 1;
+
 typedef enum{
     automatic = 0,
     manual,
     state_last, //iteration purpose
 }state;
 char* const STATE_NAME[] = {
-    "auto",
+    "automatic",
     "manual"
 };
 static state current_state = automatic;
 
 typedef enum{
-    below_35 = 0,
-    below_40,
-    below_45,
-    higher_45,
+    BELOW_35 = 0,
+    BELOW_40,
+    BELOW_45,
+    ABOVE_45,
     temp_range_last,    //iteration purpose
-}temp_range;
-static temp_range current_temp_range = below_35;
+}temp_class;
+static temp_class current_temp_class = BELOW_35;
+static int FREQUENCY[] = {
+    2, 5, 10, 20
+};
+
+typedef enum{
+    lower = 0,
+    higher,
+    manual_input_last,  //iteration_purpose
+}manual_input;
+char* const MANUAL_INPUT_NAME[] = {
+    "lower",
+    "higher"
+};
 
 #define             BUFFER_MAX_SZ 1000
 static char tmp_str[BUFFER_MAX_SZ];
@@ -46,7 +62,6 @@ static const int TEMP_ADDR_CONF = 0x1000;
 
 static struct resource* res = 0;
 static unsigned char* reg = 0;
-static char* current_mode_name = STATE_NAME[automatic];
 static long temp = -50l;   //small enough ot be obviously wrong
 
 static dev_t skeleton_dev;
@@ -75,26 +90,77 @@ int strcmp(const char* s1, const char* s2){
 
 //--- modules dedicated functions and values
 
-static void change_state(state new_state){
-    if(new_state != current_state){
-        current_state = new_state;
-        pr_info("changed state to %s\n", STATE_NAME[current_state]);
-    }else{}
-    return;
+static void set_current_temp_class(int new_temp_class){
+    current_temp_class = new_temp_class;
 }
 
-static void interpret_input(void){
-    int found = 0;
-    int i;
-    for(i=0;i<state_last;i++){
-        if(0 == strcmp(STATE_NAME[i],tmp_str)){
-            found = 1;
-            change_state(i);
+static int interpret_change_state(void){
+    int ret = NOT_FOUND;
+    int input;
+    for(input=0;input<state_last;input++){
+        if(0 == strcmp(STATE_NAME[input], tmp_str)){
+            if(input != current_state){
+                current_state = input;
+                pr_info("changed state to %s\n", STATE_NAME[current_state]);
+            }else{}
+            ret = IS_FOUND;
+            break;
+        }
+    }
+    return ret;
+}
+
+static int interpret_manual_input(void){
+    int ret = NOT_FOUND;
+    int input;
+    for(input=0;input<manual_input_last;input++){
+        if(strcmp(MANUAL_INPUT_NAME[input], tmp_str)){
+            switch(input){
+                case lower:
+                    ret = IS_FOUND;
+                    //if allowed to decrease
+                    if(current_temp_class != BELOW_35){
+                        set_current_temp_class(current_temp_class-1);
+                    }else{}
+                    break;
+                case higher:
+                    ret = IS_FOUND;
+                    if(current_temp_class != ABOVE_45){
+                        set_current_temp_class(current_temp_class+1);
+                    }else{}
+                    break;
+                default:
+                    ret = NOT_FOUND;
+                    break;
+            }
             break;
         }else{}
     }
-    if(0 == found){
-        pr_info("unknown state : %s\n", tmp_str);
+    return ret;
+}
+
+static int interpret_automatic_input(void){
+    int ret = NOT_FOUND;
+    //no automatic input, leaving the function for future modifications
+    return ret;
+}
+
+static void interpret_input(void){
+    int status = interpret_change_state();
+    if(NOT_FOUND == status){
+        switch(current_state){
+            case automatic:
+                status = interpret_automatic_input();
+                break;
+            case manual:
+                status = interpret_manual_input();
+                break;
+            default:
+                break;
+        }
+    }else{}
+    if(NOT_FOUND == status){
+        pr_info("unknown argument %s in %s mode\n", tmp_str, STATE_NAME[current_state]);
     }else{}
     return;
 }
@@ -112,7 +178,7 @@ static long get_temp(void){
 }
 
 static int get_frequency(void){
-    return 0;
+    return FREQUENCY[current_temp_class];
 }
 
 //--- driver functions
@@ -141,7 +207,7 @@ static ssize_t skeleton_read(
     *off += count;
 
     update_temp();
-    nb_char = snprintf(tmp_str, BUFFER_MAX_SZ, READ_FORMAT, get_temp(), current_mode_name, get_frequency());
+    nb_char = snprintf(tmp_str, BUFFER_MAX_SZ, READ_FORMAT, get_temp(), STATE_NAME[current_state], get_frequency());
 
     if(0 != copy_to_user(buf, ptr, nb_char)){
         nb_char = -EFAULT;
