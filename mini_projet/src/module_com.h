@@ -13,9 +13,9 @@
 /*outpout is
 "tmp, mode, n"
 */
-void read_device(char* buffer);
+int read_device(char* buffer);
 
-int write_device(char c);
+int write_device(char* buffer);
 
 
 #endif//MODULE_COM_H

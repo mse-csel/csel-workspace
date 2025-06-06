@@ -15,7 +15,7 @@
 #include "module_com.h"
 
 #define LED_ON_TIME 50000000
-#define POLLING_PERIOD 5000000
+#define POLLING_PERIOD 10000
 
 // Define an enum for mode and mode_flag
 typedef enum {

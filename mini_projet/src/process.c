@@ -40,12 +40,7 @@ void epoll_process(){
 
     ssd1306_init();
 
-    ssd1306_set_position (0,0);
-    ssd1306_puts("- mini_projet -");
-    ssd1306_set_position (1,1);
-    ssd1306_puts("- AB et JAD -");
-    ssd1306_set_position (0,2);
-    ssd1306_puts("---------------");
+
 
     //switch K1
     k1_fd = open_switch(K1, GPIO_K1);
@@ -83,6 +78,7 @@ void epoll_process(){
                         update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K1 - increase rotation\n");
                         speed = "higher";
+                        write_device(speed);
 
                     }else if(tmp_fd == k2_fd){
                         syslog(LOG_NOTICE, "reset blinking frequency\n");
@@ -90,6 +86,7 @@ void epoll_process(){
                         update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K2 - decrease rotation\n");
                         speed = "lower";
+                        write_device(speed);
                     }else{
                         syslog(LOG_NOTICE, "lowering blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
@@ -97,12 +94,17 @@ void epoll_process(){
                         printf("K3 - change mode\n");
                         // Change current mode
                         current_mode = (current_mode == MANUAL_MODE) ? AUTOMATIC_MODE : MANUAL_MODE;
+                        
                         if (current_mode == MANUAL_MODE){
                             mode_string = "manual";
                         } else {
                             mode_string = "automatic";
                         }
+                        printf("Current mode: %s\n", mode_string);
+                        write_device(mode_string);
                     }
+                    // Clear display after each button press
+                    ssd1306_clear_display();
                 } 
                 else if(tmp_fd == timer_led_fd){
                     read(tmp_fd, &tmp_long, sizeof(tmp_long));
@@ -113,13 +115,15 @@ void epoll_process(){
                 }
                 else if(tmp_fd == timer_polling_fd){
                     read(tmp_fd, &tmp_long, sizeof(tmp_long));
-                    printf("timer polling\n");
-                    printf("Current mode: %s\n", mode_string);
-                    printf("Change speed: %s\n", speed);
                     
+                    ssd1306_set_position (0,0);
+                    ssd1306_puts("- mini_projet -");
+                    ssd1306_set_position (1,1);
+                    ssd1306_puts("- AB et JAD -");
+                    ssd1306_set_position (0,2);
+                    ssd1306_puts("---------------");
                     read_device(read_buffer);
                     sscanf(read_buffer, "%15[^,], %15[^,], %15s", temperature, mode, speed_value);
-                    
                     char tmp_buf[100];
                     snprintf(tmp_buf, 100, "Temp: %sC", temperature);
                     ssd1306_set_position (0,4);
@@ -132,8 +136,6 @@ void epoll_process(){
                     snprintf(tmp_buf, 50, "Freq: %sHz", speed_value);
                     ssd1306_set_position (0,6);
                     ssd1306_puts(tmp_buf);
-
-
                 }
                 else{
                     break;
