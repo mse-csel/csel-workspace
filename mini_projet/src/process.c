@@ -29,7 +29,7 @@ void epoll_process(long period){
     char buf;
     int led_status;
     int status_led_fd, power_led_fd, k1_fd, k2_fd, k3_fd;
-    int timer_on_fd, timer_off_fd, timer_led_fd;
+    int timer_led_fd;
     int i, epoll_status, tmp_fd;
     long tmp_long;
     struct epoll_event events[MAX_EVENT_FOR_SINGLE_LOOP];
@@ -47,19 +47,12 @@ void epoll_process(long period){
     //switch K3
     k3_fd = open_switch(K3, GPIO_K3);
     add_to_epoll(epoll_fd, k3_fd, EPOLLPRI);
-    //timer to activate the led
-    timer_on_fd = start_timer(current_period, 0);
-    add_to_epoll(epoll_fd, timer_on_fd, EPOLLIN | EPOLLPRI);
-    //timer to deactivate the led
-    timer_off_fd = start_timer(current_period, DUTY_CYCLE_ON);
-    add_to_epoll(epoll_fd, timer_off_fd, EPOLLIN | EPOLLPRI);
 
     //timer to blink the led after presses
     timer_led_fd = start_timer(0, 0);
     add_to_epoll(epoll_fd, timer_led_fd, EPOLLIN | EPOLLPRI);
 
     //led fd
-    status_led_fd = open_led(STATUS_LED, GPIO_STATUS_LED);
     power_led_fd = open_led(POWER_LED, GPIO_POWER_LED);
 
     led_status = 1;
@@ -69,11 +62,7 @@ void epoll_process(long period){
             for(i=0;i<epoll_status;i++){
                 tmp_fd = events[i].data.fd;
                 // execute behaviour for fd
-                if((tmp_fd == timer_on_fd) || (tmp_fd == timer_off_fd)){
-                    read(tmp_fd, &tmp_long, sizeof(tmp_long));
-                    write(status_led_fd, (led_status ? "1" : "0"), 1);
-                    led_status = !led_status;
-                }else if((tmp_fd == k1_fd) || (tmp_fd == k2_fd) || (tmp_fd == k3_fd)){
+                if((tmp_fd == k1_fd) || (tmp_fd == k2_fd) || (tmp_fd == k3_fd)){
                     lseek(tmp_fd, 0, SEEK_SET);
                     read(tmp_fd, &buf, 1);
                     //reset if k2, reduce period if k1, increase period if k3
@@ -97,8 +86,6 @@ void epoll_process(long period){
                         //update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K3 - change mode\n");
                     }
-                    update_timer(timer_on_fd, current_period, 0);
-                    update_timer(timer_off_fd, current_period, DUTY_CYCLE_ON);
                 } 
                 else if(tmp_fd == timer_led_fd){
                     read(tmp_fd, &tmp_long, sizeof(tmp_long));
