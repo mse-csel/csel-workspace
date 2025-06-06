@@ -7,17 +7,18 @@
 
 #define COMM_FILE_PATH "/tmp/comm_file"
 typedef enum {
+    STATE_WAIT = -1,
     STATE_EXIT = 0,
-    STATE_CHANGE_MODE = 1,
-    STATE_INCREASE_FREQUENCY = 2,
-    STATE_DECREASE_FREQUENCY = 3
+    STATE_MODE_AUTO = 1,
+    STATE_MODE_MANUAL = 2,
+    STATE_INCREASE_FREQUENCY = 3,
+    STATE_DECREASE_FREQUENCY = 4
 } State;
 
 int read_int_from_keyboard(){
     int value = -1;
-    printf("Enter an integer: ");
-    while ((scanf("%d", &value) != 1) || (value < 0) || (value > 3)) {
-        printf("Invalid input. Please enter an integer between 0 and 3: ");
+    while ((scanf("%d", &value) != 1) || (value < 0) || (value > 4)) {
+        printf("Invalid input ");
         while(getchar() != '\n'); // clear the input buffer
     }
     return value;
@@ -40,21 +41,52 @@ int write_file(char* buffer){
 }
 
 void print_menu(){
-    pritnf("-------CSEL - mini projet-------\n");
+    printf("\n");
+    printf("---------------------------------\n");
+    printf("-------CSEL - mini projet-------\n");
     printf("----------user menu-------------\n");
-    printf("Enter a number to choose an option");
+    printf("Enter a number to choose an option\n");
     printf("0: EXIT\n");
-    printf("1: Change mode\n");
-    printf("2: Increase frequency\n");
-    printf("3: Decrease frequency\n");
+    printf("1: Automatic mode\n");
+    printf("2: Manual mode\n");
+    printf("3: Increase frequency\n");
+    printf("4: Decrease frequency\n");
+    printf("---------------------------------\n");
+    printf("Choose an option: ");
 }
 
 int main(){
-    State user_input = read_int_from_keyboard();
+    State user_input = STATE_WAIT;
     
     while(1){
         switch (user_input){
-
+            case STATE_WAIT:
+                print_menu();
+                user_input = read_int_from_keyboard();
+                break;
+            case STATE_EXIT:
+                printf("Exiting\n");
+                return 0;
+            case STATE_MODE_AUTO:
+                printf("Mode automatic\n");
+                user_input = STATE_WAIT;
+                break;
+            case STATE_MODE_MANUAL:
+                printf("Mode manual\n");
+                user_input = STATE_WAIT;
+                break;
+            case STATE_INCREASE_FREQUENCY:
+                printf("Increase frequency\n");
+                user_input = STATE_WAIT;
+                break;
+            case STATE_DECREASE_FREQUENCY:
+                printf("Decrease frequency\n");
+                user_input = STATE_WAIT;
+                break;
+            default:
+                printf("Invalid option. Please try again.\n");
+                user_input = STATE_WAIT;
+                break;
         }
 
     }
