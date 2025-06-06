@@ -9,17 +9,15 @@
 #include <linux/ioport.h>	//memory region handling
 #include <linux/io.h>		//mmio handling
 
-//--- arguments
-static char* prime_compute_file = "/opt/.prime_computation";
-module_param(prime_compute_file, charp, 0);
-
-static char* prime_list = "/opt/prime";
-module_param(prime_list, charp, 0);
-
 //--- global/static values
 
 static const int NOT_FOUND = 0;
 static const int IS_FOUND = 1;
+
+//note: below are enum and array linked to them. While this construction is 
+//      a bit of tinkering in C (because modification requires extra care
+//      to not miss an enum element), it becomes trivial and 
+//      straightforward when using map (in C++ for instance)
 
 typedef enum{
     automatic = 0,
@@ -91,6 +89,7 @@ int strcmp(const char* s1, const char* s2){
 //--- modules dedicated functions and values
 
 static void set_current_temp_class(int new_temp_class){
+    pr_info("prior %d, new %d\n", current_temp_class, new_temp_class);
     current_temp_class = new_temp_class;
 }
 
@@ -101,7 +100,6 @@ static int interpret_change_state(void){
         if(0 == strcmp(STATE_NAME[input], tmp_str)){
             if(input != current_state){
                 current_state = input;
-                pr_info("changed state to %s\n", STATE_NAME[current_state]);
             }else{}
             ret = IS_FOUND;
             break;
@@ -114,7 +112,7 @@ static int interpret_manual_input(void){
     int ret = NOT_FOUND;
     int input;
     for(input=0;input<manual_input_last;input++){
-        if(strcmp(MANUAL_INPUT_NAME[input], tmp_str)){
+        if(0 == strcmp(MANUAL_INPUT_NAME[input], tmp_str)){
             switch(input){
                 case lower:
                     ret = IS_FOUND;
@@ -251,9 +249,6 @@ static int __init skeleton_init(void){
     int status;
     pr_info("hello there, mini_project module loaded\n");
     res = request_mem_region(TEMP_ADDR_START, TEMP_ADDR_CONF, "allwinner h5 ths");
-    if(0 == res){
-        pr_info("error while reserving memory region\n");
-    }else{}
     reg = ioremap(TEMP_ADDR_START, TEMP_ADDR_CONF);
     if(0 == reg){
         pr_info("error while trying to map processor register\n");
