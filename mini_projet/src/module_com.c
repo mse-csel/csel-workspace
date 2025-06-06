@@ -20,8 +20,6 @@ int read_device(char* buffer){
         return -1;
 
     }
-
-    //buffer[bytes_read] = '\0'; // Null-terminate the string
     close(fd);
     return 0;
 }
@@ -33,7 +31,6 @@ int write_device(char* buffer){
         perror("Failed to open device for writing");
         return -1;
     }
-    printf("Writing to device: %s\n", buffer);
     ssize_t bytes_write = write(fd, buffer, sizeof(buffer));
     if (bytes_write < 0) {
         perror("Failed to write to device");

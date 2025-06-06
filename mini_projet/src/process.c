@@ -30,7 +30,7 @@ void epoll_process(){
     long tmp_long;
     struct epoll_event events[MAX_EVENT_FOR_SINGLE_LOOP];
     int epoll_fd = epoll_create1(0);
-    char* mode_string = "manual"; // default mode
+    char* mode_string="null"; 
     Mode current_mode = MANUAL_MODE; // Default mode is manual
     char* speed="null"; // "higer" or "lower"
     char read_buffer[READ_BUFFER_SIZE];
@@ -39,7 +39,15 @@ void epoll_process(){
 
 
     ssd1306_init();
-
+    if(read_device(read_buffer) == 0){
+        sscanf(read_buffer, "%15[^,], %15[^,], %15s", temperature, mode, speed_value);
+        mode_string = mode; // Use the mode read from the device
+        current_mode = (strcmp(mode, "manual") == 0) ? MANUAL_MODE : AUTOMATIC_MODE;
+    }
+    else{
+        syslog(LOG_ERR, "Failed to read initial device state");
+    }
+    
 
 
     //switch K1
@@ -100,7 +108,6 @@ void epoll_process(){
                         } else {
                             mode_string = "automatic";
                         }
-                        printf("Current mode: %s\n", mode_string);
                         write_device(mode_string);
                     }
                     // Clear display after each button press
@@ -122,20 +129,29 @@ void epoll_process(){
                     ssd1306_puts("- AB et JAD -");
                     ssd1306_set_position (0,2);
                     ssd1306_puts("---------------");
-                    read_device(read_buffer);
-                    sscanf(read_buffer, "%15[^,], %15[^,], %15s", temperature, mode, speed_value);
-                    char tmp_buf[100];
-                    snprintf(tmp_buf, 100, "Temp: %sC", temperature);
-                    ssd1306_set_position (0,4);
-                    ssd1306_puts(tmp_buf);
+                    if(read_device(read_buffer) == 0){
+                        sscanf(read_buffer, "%15[^,], %15[^,], %15s", temperature, mode, speed_value);
+                        char tmp_buf[100];
+                        snprintf(tmp_buf, 100, "Temp: %sC", temperature);
+                        ssd1306_set_position (0,4);
+                        ssd1306_puts(tmp_buf);
 
-                    snprintf(tmp_buf, 50, "Mode: %s", mode);
-                    ssd1306_set_position (0,5);
-                    ssd1306_puts(tmp_buf);
+                        snprintf(tmp_buf, 50, "Mode: %s", mode);
+                        ssd1306_set_position (0,5);
+                        ssd1306_puts(tmp_buf);
 
-                    snprintf(tmp_buf, 50, "Freq: %sHz", speed_value);
-                    ssd1306_set_position (0,6);
-                    ssd1306_puts(tmp_buf);
+                        snprintf(tmp_buf, 50, "Freq: %sHz", speed_value);
+                        ssd1306_set_position (0,6);
+                        ssd1306_puts(tmp_buf);
+                    }
+                    else{
+                        syslog(LOG_ERR, "Failed to read initial device state");
+                        ssd1306_set_position (0,4);
+                        ssd1306_puts("Failed to");
+                        ssd1306_set_position (0,5);
+                        ssd1306_puts("read device");
+                    }
+
                 }
                 else{
                     break;
