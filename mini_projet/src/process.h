@@ -15,6 +15,12 @@
 
 #define LED_ON_TIME 50000000
 
+// Define an enum for mode and mode_flag
+typedef enum {
+    MANUAL_MODE = 0,
+    AUTOMATIC_MODE = 1
+} Mode;
+
 void silly_process(long period);
 void epoll_process(long period);
 void select_process(long period);

@@ -34,7 +34,11 @@ void epoll_process(long period){
     long tmp_long;
     struct epoll_event events[MAX_EVENT_FOR_SINGLE_LOOP];
     int epoll_fd = epoll_create1(0);
+    char* mode_string = "manual"; // default mode
+    Mode current_mode = MANUAL_MODE; // Default mode is manual
+    char* speed; // "higer" or "lower"
     // create fd and define associated events
+
 
     ssd1306_init();
 
@@ -85,6 +89,13 @@ void epoll_process(long period){
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         //update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K3 - change mode\n");
+                        // Change current mode
+                        current_mode = (current_mode == MANUAL_MODE) ? AUTOMATIC_MODE : MANUAL_MODE;
+                        if (current_mode == MANUAL_MODE){
+                            mode_string = "manual";
+                        } else {
+                            mode_string = "automatic";
+                        }
                     }
                 } 
                 else if(tmp_fd == timer_led_fd){
