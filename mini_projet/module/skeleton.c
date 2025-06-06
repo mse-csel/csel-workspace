@@ -228,7 +228,9 @@ static ssize_t skeleton_read(
     if (count > remaining) count = remaining;                                                                           
     *off += count;
 
-    update_temp();
+    if(manual == current_state){
+        update_temp();
+    }else{}
     nb_char = snprintf(
         tmp_str, 
         BUFFER_MAX_SZ, 
