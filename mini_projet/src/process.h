@@ -11,6 +11,7 @@
 #include "led_control.h"
 #include "switch_control.h"
 #include "timer_control.h"
+#include "ssd1306.h"
 
 #define LED_ON_TIME 50000000
 

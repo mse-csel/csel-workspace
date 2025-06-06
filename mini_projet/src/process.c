@@ -29,12 +29,15 @@ void epoll_process(long period){
     char buf;
     int led_status;
     int status_led_fd, power_led_fd, k1_fd, k2_fd, k3_fd;
-    int timer_led_fd,timer_on_fd, timer_off_fd;
+    int timer_on_fd, timer_off_fd, timer_led_fd;
     int i, epoll_status, tmp_fd;
     long tmp_long;
     struct epoll_event events[MAX_EVENT_FOR_SINGLE_LOOP];
     int epoll_fd = epoll_create1(0);
     // create fd and define associated events
+
+    ssd1306_init();
+
     //switch K1
     k1_fd = open_switch(K1, GPIO_K1);
     add_to_epoll(epoll_fd, k1_fd, EPOLLPRI);
@@ -77,37 +80,41 @@ void epoll_process(long period){
                     if(tmp_fd == k1_fd){
                         current_period -= delta_period;
                         syslog(LOG_NOTICE, "increasing blinking frequency\n");
-                        write(power_led_fd, "1", 1);
-                        update_timer(timer_led_fd, LED_ON_TIME, 0);
-                        printf("K1 pressed\n");
+                        write(power_led_fd, "1", 1); // notifiy user of button press
+                        //update_timer(timer_led_fd, LED_ON_TIME, 0);
+                        printf("K1 - increase rotation\n");
 
                     }else if(tmp_fd == k2_fd){
                         current_period = default_period;
                         syslog(LOG_NOTICE, "reset blinking frequency\n");
-                        write(power_led_fd, "1", 1);
-                        update_timer(timer_led_fd, LED_ON_TIME, 0);
-                        printf("K2 pressed\n");
+                        write(power_led_fd, "1", 1); // notifiy user of button press
+                        //update_timer(timer_led_fd, LED_ON_TIME, 0);
+                        printf("K2 - decrease rotation\n");
                     }else{
                         current_period += delta_period;
                         syslog(LOG_NOTICE, "lowering blinking frequency\n");
-                        write(power_led_fd, "1", 1);
-                        update_timer(timer_led_fd, LED_ON_TIME, 0);
-                        printf("K3 pressed\n");
+                        write(power_led_fd, "1", 1); // notifiy user of button press
+                        //update_timer(timer_led_fd, LED_ON_TIME, 0);
+                        printf("K3 - change mode\n");
                     }
                     update_timer(timer_on_fd, current_period, 0);
                     update_timer(timer_off_fd, current_period, DUTY_CYCLE_ON);
-                }
+                } 
                 else if(tmp_fd == timer_led_fd){
                     read(tmp_fd, &tmp_long, sizeof(tmp_long));
                     write(power_led_fd, "0", 1);
                     update_timer(timer_led_fd, 0, 0);
-                    printf("timer led off\n");
+                    //printf("timer led off\n");
+                    // Need to be fixed, timer never gets its actual value
                 }
                 else{
                     break;
                 }
             }
             // manage event here
+
+                ssd1306_set_position (0,0);
+                ssd1306_puts("mini_projet");
         }else if(0 == epoll_status){
             //timeout
         }else{
