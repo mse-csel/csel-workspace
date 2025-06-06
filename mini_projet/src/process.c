@@ -81,20 +81,20 @@ void epoll_process(){
                     
                     //reset if k2, reduce period if k1, increase period if k3
                     if(tmp_fd == k1_fd){
-                        syslog(LOG_NOTICE, "increasing blinking frequency\n");
+                        syslog(LOG_NOTICE, "increase fan frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         update_timer(timer_led_fd, LED_ON_TIME, 0);
                         speed = "higher";
                         write_device(speed);
 
                     }else if(tmp_fd == k2_fd){
-                        syslog(LOG_NOTICE, "reset blinking frequency\n");
+                        syslog(LOG_NOTICE, "lower fan frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         update_timer(timer_led_fd, LED_ON_TIME, 0);
                         speed = "lower";
                         write_device(speed);
                     }else{
-                        syslog(LOG_NOTICE, "lowering blinking frequency\n");
+                        syslog(LOG_NOTICE, "change mode\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         update_timer(timer_led_fd, LED_ON_TIME, 0);
                         // Change current mode
