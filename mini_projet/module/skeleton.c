@@ -6,8 +6,11 @@
 #include <linux/cdev.h>         // char driver
 #include <linux/fs.h>           // driver
 #include <linux/uaccess.h>      // copy data to/from the user
-#include <linux/ioport.h>	//memory region handling
-#include <linux/io.h>		//mmio handling
+#include <linux/ioport.h>	    // memory region handling
+#include <linux/io.h>		    // mmio handling
+#include <linux/kthread.h>      // thread
+#include <linux/semaphore.h>    // semaphore
+#include <linux/delay.h>        // ssleep
 
 //--- global/static values
 
@@ -52,15 +55,20 @@ char* const MANUAL_INPUT_NAME[] = {
     "higher"
 };
 
+static struct semaphore sema_auto;
+static struct task_struct* automatic_thread;
+static const int AUTOMATIC_SLEEP_TIME = 1;  // [s]
+
 #define             BUFFER_MAX_SZ 1000
 static char tmp_str[BUFFER_MAX_SZ];
-static const char*  READ_FORMAT = "%ld, %s, %d\n"; //processor_temp, current_mode, led_frequency
+static const char*  READ_FORMAT = "%d.%d, %s, %d\n"; //processor_temp (2 decimal precision), current_mode, frequency
 static const long TEMP_ADDR_START = 0x01c25000;
 static const int TEMP_ADDR_CONF = 0x1000;
 
 static struct resource* res = 0;
 static unsigned char* reg = 0;
-static long temp = -50l;   //small enough ot be obviously wrong
+static int current_temp_i = -50;   //small enough ot be obviously wrong
+static int current_temp_f = 0;
 
 static dev_t skeleton_dev;
 static struct cdev skeleton_cdev;
@@ -89,7 +97,6 @@ int strcmp(const char* s1, const char* s2){
 //--- modules dedicated functions and values
 
 static void set_current_temp_class(int new_temp_class){
-    pr_info("prior %d, new %d\n", current_temp_class, new_temp_class);
     current_temp_class = new_temp_class;
 }
 
@@ -164,19 +171,26 @@ static void interpret_input(void){
 }
 
 static void update_temp(void){
+    long tmp;
     if(0 != reg){
-        temp = -1191 * (int)ioread32(reg+0x80) / 10 + 223000;
+        tmp = ((-1191 * (int)ioread32(reg+0x80)) / 10) + 223000;
+        current_temp_f = (tmp/10) % 100;
+        current_temp_i = (tmp/1000);
     }else{} 
     return;
 }
 
-static long get_temp(void){
-    update_temp();
-    return temp;
-}
-
-static int get_frequency(void){
-    return FREQUENCY[current_temp_class];
+static int thread_func(void* data){
+    while(!kthread_should_stop()){
+        if(0 == down_interruptible(&sema_auto)){
+            update_temp();
+            //mapping between {35, 40, 45, above} to {0, 1, 2, 3}
+            set_current_temp_class((current_temp_i-35)/5);
+            up(&sema_auto);
+            ssleep(AUTOMATIC_SLEEP_TIME);
+        }else{}
+    }
+    return 0;
 }
 
 //--- driver functions
@@ -205,7 +219,15 @@ static ssize_t skeleton_read(
     *off += count;
 
     update_temp();
-    nb_char = snprintf(tmp_str, BUFFER_MAX_SZ, READ_FORMAT, get_temp(), STATE_NAME[current_state], get_frequency());
+    nb_char = snprintf(
+        tmp_str, 
+        BUFFER_MAX_SZ, 
+        READ_FORMAT, 
+        current_temp_i, 
+        current_temp_f,
+        STATE_NAME[current_state], 
+        FREQUENCY[current_temp_class]
+    );
 
     if(0 != copy_to_user(buf, ptr, nb_char)){
         nb_char = -EFAULT;
@@ -259,12 +281,17 @@ static int __init skeleton_init(void){
         cdev_init(&skeleton_cdev, &skeleton_fops);
         skeleton_cdev.owner = THIS_MODULE;
         status = cdev_add(&skeleton_cdev, skeleton_dev, 1);
+        sema_init(&sema_auto, 1);
+        automatic_thread = kthread_run(thread_func, 0, "s/thread");
     }else{}
+
     return 0;
 }
 
 // exit module (rmmod, ...)
 static void __exit skeleton_exit(void){
+    up(&sema_auto);
+    kthread_stop(automatic_thread);
     if(0 != res){
         release_mem_region(TEMP_ADDR_START, TEMP_ADDR_CONF);
     }else{}
