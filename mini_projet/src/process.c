@@ -70,7 +70,7 @@ void epoll_process(){
     //open IPC with user process
     mkfifo(COMM_FILE_PATH, 0666);
     user_comm_fd = open(COMM_FILE_PATH, O_RDONLY | O_NONBLOCK);
-    add_to_epoll(epoll_fd, user_comm_fd, EPOLLIN);
+    add_to_epoll(epoll_fd, user_comm_fd, EPOLLPRI);
 
     //led fd
     power_led_fd = open_led(POWER_LED, GPIO_POWER_LED);
