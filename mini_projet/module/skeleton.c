@@ -58,8 +58,11 @@ char* const MANUAL_INPUT_NAME[] = {
 
 static struct semaphore sema_auto;
 static struct task_struct* automatic_thread;
+static struct task_struct* blink_thread;
 static const int AUTOMATIC_SLEEP_TIME = 1;  // [s]
-
+static const int BLINK_DELAY_SLEEP[] = {
+    500, 200, 100, 50
+};
 static const int GPIO_LED = 10;
 
 #define             BUFFER_MAX_SZ 1000
@@ -194,18 +197,25 @@ static void update_temp(void){
 }
 
 static int thread_auto_func(void* data){
-    static int led_status = 0;
     while(!kthread_should_stop()){
         if(0 == down_interruptible(&sema_auto)){
             update_temp();
             //mapping between {35, 40, 45, above} to {0, 1, 2, 3}
             set_current_temp_class((current_temp_i-35)/5);
             up(&sema_auto);
-            led_status = ((led_status + 1) & 0x1);
-            gpio_set_value(GPIO_LED, led_status);
             ssleep(AUTOMATIC_SLEEP_TIME);
         }else{}
     }
+    return 0;
+}
+
+static int thread_blink_func(void* data){
+    static int led_status = 0;
+    while(!kthread_should_stop()){
+        led_status = ((led_status + 1) & 0x1);
+        gpio_set_value(GPIO_LED, led_status);
+        msleep(BLINK_DELAY_SLEEP[current_temp_class]);
+    }    
     return 0;
 }
 
@@ -316,7 +326,7 @@ static int __init skeleton_init(void){
         sema_init(&sema_auto, 1);
         init_led();
         automatic_thread = kthread_run(thread_auto_func, 0, "s/thread");
-        //blink_thread = kthread_run(thread_led_run, 0, "s/thread");
+        blink_thread = kthread_run(thread_blink_func, 0, "s/thread");
     }else{}
 
     return 0;
@@ -326,6 +336,7 @@ static int __init skeleton_init(void){
 static void __exit skeleton_exit(void){
     up(&sema_auto);
     kthread_stop(automatic_thread);
+    kthread_stop(blink_thread);
     release_led();
     if(0 != res){
         release_mem_region(TEMP_ADDR_START, TEMP_ADDR_CONF);
