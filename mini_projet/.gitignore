@@ -1,1 +1,3 @@
 build/*
+user_app/build/*
+module/build/*
