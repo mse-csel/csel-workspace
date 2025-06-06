@@ -107,6 +107,16 @@ static int interpret_change_state(void){
         if(0 == strcmp(STATE_NAME[input], tmp_str)){
             if(input != current_state){
                 current_state = input;
+                if(manual == input){
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+// rationale :  if result is 0, great news. Otherwise it simply mean that the module is removed
+//              either way we can handle ignoring the check of value
+                    down_interruptible(&sema_auto);
+#pragma GCC diagnostic pop
+                }else if(automatic == input){   //coule be just "else", explicit for future features
+                    up(&sema_auto);
+                }else{}
             }else{}
             ret = IS_FOUND;
             break;
