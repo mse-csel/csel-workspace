@@ -74,20 +74,20 @@ void epoll_process(){
                     if(tmp_fd == k1_fd){
                         syslog(LOG_NOTICE, "increasing blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
-                        //update_timer(timer_led_fd, LED_ON_TIME, 0);
+                        update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K1 - increase rotation\n");
                         speed = "higher";
 
                     }else if(tmp_fd == k2_fd){
                         syslog(LOG_NOTICE, "reset blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
-                        //update_timer(timer_led_fd, LED_ON_TIME, 0);
+                        update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K2 - decrease rotation\n");
                         speed = "lower";
                     }else{
                         syslog(LOG_NOTICE, "lowering blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
-                        //update_timer(timer_led_fd, LED_ON_TIME, 0);
+                        update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K3 - change mode\n");
                         // Change current mode
                         current_mode = (current_mode == MANUAL_MODE) ? AUTOMATIC_MODE : MANUAL_MODE;
@@ -111,16 +111,6 @@ void epoll_process(){
                     printf("Current mode: %s\n", mode_string);
                     printf("Change speed: %s\n", speed);
 
-                }
-                else if(tmp_fd == power_led_fd){
-                    read(tmp_fd, &buf, 1);
-                    if(buf == '1'){
-                        write(power_led_fd, "0", 1);
-                        printf("power led on\n");
-                    }else{
-                        write(power_led_fd, "1", 1);
-                        printf("power led off\n");
-                    }
                 }
                 else{
                     break;
