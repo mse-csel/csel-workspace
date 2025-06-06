@@ -11,6 +11,7 @@
 #include <linux/kthread.h>      // thread
 #include <linux/semaphore.h>    // semaphore
 #include <linux/delay.h>        // ssleep
+#include <linux/gpio.h>         // led management
 
 //--- global/static values
 
@@ -58,6 +59,8 @@ char* const MANUAL_INPUT_NAME[] = {
 static struct semaphore sema_auto;
 static struct task_struct* automatic_thread;
 static const int AUTOMATIC_SLEEP_TIME = 1;  // [s]
+
+static const int GPIO_LED = 10;
 
 #define             BUFFER_MAX_SZ 1000
 static char tmp_str[BUFFER_MAX_SZ];
@@ -190,17 +193,34 @@ static void update_temp(void){
     return;
 }
 
-static int thread_func(void* data){
+static int thread_auto_func(void* data){
+    static int led_status = 0;
     while(!kthread_should_stop()){
         if(0 == down_interruptible(&sema_auto)){
             update_temp();
             //mapping between {35, 40, 45, above} to {0, 1, 2, 3}
             set_current_temp_class((current_temp_i-35)/5);
             up(&sema_auto);
+            led_status = ((led_status + 1) & 0x1);
+            gpio_set_value(GPIO_LED, led_status);
             ssleep(AUTOMATIC_SLEEP_TIME);
         }else{}
     }
     return 0;
+}
+
+void init_led(void){
+    gpio_request(GPIO_LED, "sysfs");
+    gpio_direction_output(GPIO_LED, true);
+    gpio_export(GPIO_LED, false);   //prevents gpio direction from being changed
+    return;
+}
+
+void release_led(void){
+    gpio_set_value(GPIO_LED, 0);
+    gpio_unexport(GPIO_LED);
+    gpio_free(GPIO_LED);
+    return;
 }
 
 //--- driver functions
@@ -294,7 +314,9 @@ static int __init skeleton_init(void){
         skeleton_cdev.owner = THIS_MODULE;
         status = cdev_add(&skeleton_cdev, skeleton_dev, 1);
         sema_init(&sema_auto, 1);
-        automatic_thread = kthread_run(thread_func, 0, "s/thread");
+        init_led();
+        automatic_thread = kthread_run(thread_auto_func, 0, "s/thread");
+        //blink_thread = kthread_run(thread_led_run, 0, "s/thread");
     }else{}
 
     return 0;
@@ -304,6 +326,7 @@ static int __init skeleton_init(void){
 static void __exit skeleton_exit(void){
     up(&sema_auto);
     kthread_stop(automatic_thread);
+    release_led();
     if(0 != res){
         release_mem_region(TEMP_ADDR_START, TEMP_ADDR_CONF);
     }else{}
