@@ -1,6 +1,5 @@
 #include "process.h"
 
-static int DUTY_CYCLE_ON = 50;
 //--- epoll approach starts here
 
 static int MAX_EVENT_FOR_SINGLE_LOOP = 8;
@@ -22,25 +21,25 @@ static void add_to_epoll(int epoll_fd, int fd, uint32_t flags){
     }
 }
 
-void epoll_process(long period){
-    long default_period = period;   //ns
-    long current_period = default_period;
-    long delta_period = default_period * 10 / 100;  //10% of default period
+void epoll_process(){
+    
     char buf;
-    int led_status;
-    int status_led_fd, power_led_fd, k1_fd, k2_fd, k3_fd;
-    int timer_led_fd;
+    int power_led_fd, k1_fd, k2_fd, k3_fd;
+    int timer_led_fd, timer_polling_fd;
     int i, epoll_status, tmp_fd;
     long tmp_long;
     struct epoll_event events[MAX_EVENT_FOR_SINGLE_LOOP];
     int epoll_fd = epoll_create1(0);
     char* mode_string = "manual"; // default mode
     Mode current_mode = MANUAL_MODE; // Default mode is manual
-    char* speed; // "higer" or "lower"
+    char* speed="null"; // "higer" or "lower"
     // create fd and define associated events
 
 
     ssd1306_init();
+
+    ssd1306_set_position (0,0);
+    ssd1306_puts("mini_projet");
 
     //switch K1
     k1_fd = open_switch(K1, GPIO_K1);
@@ -55,11 +54,12 @@ void epoll_process(long period){
     //timer to blink the led after presses
     timer_led_fd = start_timer(0, 0);
     add_to_epoll(epoll_fd, timer_led_fd, EPOLLIN | EPOLLPRI);
+    timer_polling_fd = start_timer(POLLING_PERIOD, 0);
+    add_to_epoll(epoll_fd, timer_polling_fd, EPOLLIN | EPOLLPRI);
 
     //led fd
     power_led_fd = open_led(POWER_LED, GPIO_POWER_LED);
 
-    led_status = 1;
     while(1){
         epoll_status = epoll_wait(epoll_fd, events, MAX_EVENT_FOR_SINGLE_LOOP, EPOLL_WAIT_TIMEOUT);
         if(epoll_status > 0){
@@ -69,22 +69,22 @@ void epoll_process(long period){
                 if((tmp_fd == k1_fd) || (tmp_fd == k2_fd) || (tmp_fd == k3_fd)){
                     lseek(tmp_fd, 0, SEEK_SET);
                     read(tmp_fd, &buf, 1);
+                    
                     //reset if k2, reduce period if k1, increase period if k3
                     if(tmp_fd == k1_fd){
-                        current_period -= delta_period;
                         syslog(LOG_NOTICE, "increasing blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         //update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K1 - increase rotation\n");
+                        speed = "higher";
 
                     }else if(tmp_fd == k2_fd){
-                        current_period = default_period;
                         syslog(LOG_NOTICE, "reset blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         //update_timer(timer_led_fd, LED_ON_TIME, 0);
                         printf("K2 - decrease rotation\n");
+                        speed = "lower";
                     }else{
-                        current_period += delta_period;
                         syslog(LOG_NOTICE, "lowering blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         //update_timer(timer_led_fd, LED_ON_TIME, 0);
@@ -105,14 +105,29 @@ void epoll_process(long period){
                     //printf("timer led off\n");
                     // Need to be fixed, timer never gets its actual value
                 }
+                else if(tmp_fd == timer_polling_fd){
+                    read(tmp_fd, &tmp_long, sizeof(tmp_long));
+                    printf("timer polling\n");
+                    printf("Current mode: %s\n", mode_string);
+                    printf("Change speed: %s\n", speed);
+
+                }
+                else if(tmp_fd == power_led_fd){
+                    read(tmp_fd, &buf, 1);
+                    if(buf == '1'){
+                        write(power_led_fd, "0", 1);
+                        printf("power led on\n");
+                    }else{
+                        write(power_led_fd, "1", 1);
+                        printf("power led off\n");
+                    }
+                }
                 else{
                     break;
                 }
             }
             // manage event here
 
-                ssd1306_set_position (0,0);
-                ssd1306_puts("mini_projet");
         }else if(0 == epoll_status){
             //timeout
         }else{

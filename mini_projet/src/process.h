@@ -14,6 +14,7 @@
 #include "ssd1306.h"
 
 #define LED_ON_TIME 50000000
+#define POLLING_PERIOD 5000000
 
 // Define an enum for mode and mode_flag
 typedef enum {
@@ -22,7 +23,7 @@ typedef enum {
 } Mode;
 
 void silly_process(long period);
-void epoll_process(long period);
+void epoll_process();
 void select_process(long period);
 
 #endif // PROCESS_H
