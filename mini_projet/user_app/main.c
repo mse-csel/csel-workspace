@@ -5,7 +5,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 
 #define COMM_FILE_PATH "/tmp/comm_file"
 typedef enum {
@@ -27,7 +26,7 @@ int read_int_from_keyboard(){
 }
 
 int write_file(char* buffer){
-    int fd = open(COMM_FILE_PATH, O_WRONLY | O_TRUNC, 0644); // open, create, and truncate file
+    int fd = open(COMM_FILE_PATH, O_WRONLY | O_TRUNC, 0644); // open, and truncate file
     if (fd < 0) {
         perror("Failed to open device for writing");
         return -1;

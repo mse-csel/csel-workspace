@@ -16,6 +16,7 @@
 
 #define LED_ON_TIME 50000000
 #define POLLING_PERIOD 10000
+#define COMM_FILE_PATH "/tmp/comm_file"
 
 // Define an enum for mode and mode_flag
 typedef enum {

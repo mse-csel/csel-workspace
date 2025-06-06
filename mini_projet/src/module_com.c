@@ -40,3 +40,20 @@ int write_device(char* buffer){
     close(fd);
     return 0;
 }
+
+int read_user_comm(char* buffer){
+    int fd = open(COMM_FILE_PATH, O_RDONLY | O_NONBLOCK);
+    if (fd < 0) {
+        perror("Failed to open user communication file");
+        return -1;
+    }
+    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    if (bytes_read < 0) {
+        perror("Failed to read from device");
+        close(fd);
+        return -1;
+
+    }
+    return 0;
+    close(fd);
+}

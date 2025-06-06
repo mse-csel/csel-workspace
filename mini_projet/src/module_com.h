@@ -8,6 +8,7 @@
 
 
 #define DEVICE_PATH   "/dev/mini_project"
+#define COMM_FILE_PATH "/tmp/comm_file"
 #define READ_BUFFER_SIZE 128
 
 /*outpout is
@@ -16,6 +17,8 @@
 int read_device(char* buffer);
 
 int write_device(char* buffer);
+
+int read_user_comm(char* buffer);
 
 
 #endif//MODULE_COM_H

@@ -25,6 +25,7 @@ void epoll_process(){
     
     char buf;
     int power_led_fd, k1_fd, k2_fd, k3_fd;
+    int user_comm_fd;
     int timer_led_fd, timer_polling_fd;
     int i, epoll_status, tmp_fd;
     long tmp_long;
@@ -34,6 +35,7 @@ void epoll_process(){
     Mode current_mode = MANUAL_MODE; // Default mode is manual
     char* speed="null"; // "higer" or "lower"
     char read_buffer[READ_BUFFER_SIZE];
+    char user_input_buffer[READ_BUFFER_SIZE];
     char temperature[16], mode[16], speed_value[16];
     // create fd and define associated events
 
@@ -48,7 +50,6 @@ void epoll_process(){
         syslog(LOG_ERR, "Failed to read initial device state");
     }
     
-
 
     //switch K1
     k1_fd = open_switch(K1, GPIO_K1);
@@ -65,6 +66,11 @@ void epoll_process(){
     add_to_epoll(epoll_fd, timer_led_fd, EPOLLIN | EPOLLPRI);
     timer_polling_fd = start_timer(POLLING_PERIOD, 0);
     add_to_epoll(epoll_fd, timer_polling_fd, EPOLLIN | EPOLLPRI);
+
+    //open IPC with user process
+    mkfifo(COMM_FILE_PATH, 0666);
+    user_comm_fd = open(COMM_FILE_PATH, O_RDONLY | O_NONBLOCK);
+    add_to_epoll(epoll_fd, user_comm_fd, EPOLLIN);
 
     //led fd
     power_led_fd = open_led(POWER_LED, GPIO_POWER_LED);
@@ -110,6 +116,11 @@ void epoll_process(){
                     // Clear display after each button press
                     ssd1306_clear_display();
                 } 
+                else if (tmp_fd == user_comm_fd){ 
+                    if(read_user_comm(user_input_buffer) == 0){
+                        printf("User command: %s\n", user_input_buffer);
+                    }
+                }
                 else if(tmp_fd == timer_led_fd){
                     read(tmp_fd, &tmp_long, sizeof(tmp_long));
                     write(power_led_fd, "0", 1);
@@ -148,7 +159,6 @@ void epoll_process(){
                         ssd1306_set_position (0,5);
                         ssd1306_puts("read device");
                     }
-
                 }
                 else{
                     break;
