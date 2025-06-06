@@ -84,7 +84,6 @@ void epoll_process(){
                         syslog(LOG_NOTICE, "increasing blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         update_timer(timer_led_fd, LED_ON_TIME, 0);
-                        printf("K1 - increase rotation\n");
                         speed = "higher";
                         write_device(speed);
 
@@ -92,14 +91,12 @@ void epoll_process(){
                         syslog(LOG_NOTICE, "reset blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         update_timer(timer_led_fd, LED_ON_TIME, 0);
-                        printf("K2 - decrease rotation\n");
                         speed = "lower";
                         write_device(speed);
                     }else{
                         syslog(LOG_NOTICE, "lowering blinking frequency\n");
                         write(power_led_fd, "1", 1); // notifiy user of button press
                         update_timer(timer_led_fd, LED_ON_TIME, 0);
-                        printf("K3 - change mode\n");
                         // Change current mode
                         current_mode = (current_mode == MANUAL_MODE) ? AUTOMATIC_MODE : MANUAL_MODE;
                         
