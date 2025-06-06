@@ -31,7 +31,7 @@ int write_device(char* buffer){
         perror("Failed to open device for writing");
         return -1;
     }
-    ssize_t bytes_write = write(fd, buffer, sizeof(buffer));
+    ssize_t bytes_write = write(fd, buffer, strlen(buffer));
     if (bytes_write < 0) {
         perror("Failed to write to device");
         close(fd);
