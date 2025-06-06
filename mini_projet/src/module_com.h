@@ -1,12 +1,20 @@
 
 #ifndef MODULE_COM_H
 #define MODULE_COM_H
+#include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdio.h>
 
 
+#define DEVICE_PATH   "/dev/mini_project"
+#define READ_BUFFER_SIZE 128
 
-#define DEVICE_PATH   "/dev/mini_projet"
+/*outpout is
+"tmp, mode, n"
+*/
+void read_device(char* buffer);
 
-char read_device(void);
 int write_device(char c);
 
 

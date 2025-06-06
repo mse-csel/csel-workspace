@@ -12,6 +12,7 @@
 #include "switch_control.h"
 #include "timer_control.h"
 #include "ssd1306.h"
+#include "module_com.h"
 
 #define LED_ON_TIME 50000000
 #define POLLING_PERIOD 5000000

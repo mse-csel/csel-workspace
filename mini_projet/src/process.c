@@ -33,13 +33,19 @@ void epoll_process(){
     char* mode_string = "manual"; // default mode
     Mode current_mode = MANUAL_MODE; // Default mode is manual
     char* speed="null"; // "higer" or "lower"
+    char read_buffer[READ_BUFFER_SIZE];
+    char temperature[16], mode[16], speed_value[16];
     // create fd and define associated events
 
 
     ssd1306_init();
 
     ssd1306_set_position (0,0);
-    ssd1306_puts("mini_projet");
+    ssd1306_puts("- mini_projet -");
+    ssd1306_set_position (1,1);
+    ssd1306_puts("- AB et JAD -");
+    ssd1306_set_position (0,2);
+    ssd1306_puts("---------------");
 
     //switch K1
     k1_fd = open_switch(K1, GPIO_K1);
@@ -110,6 +116,23 @@ void epoll_process(){
                     printf("timer polling\n");
                     printf("Current mode: %s\n", mode_string);
                     printf("Change speed: %s\n", speed);
+                    
+                    read_device(read_buffer);
+                    sscanf(read_buffer, "%15[^,], %15[^,], %15s", temperature, mode, speed_value);
+                    
+                    char tmp_buf[100];
+                    snprintf(tmp_buf, 100, "Temp: %sC", temperature);
+                    ssd1306_set_position (0,4);
+                    ssd1306_puts(tmp_buf);
+
+                    snprintf(tmp_buf, 50, "Mode: %s", mode);
+                    ssd1306_set_position (0,5);
+                    ssd1306_puts(tmp_buf);
+
+                    snprintf(tmp_buf, 50, "Freq: %sHz", speed_value);
+                    ssd1306_set_position (0,6);
+                    ssd1306_puts(tmp_buf);
+
 
                 }
                 else{
