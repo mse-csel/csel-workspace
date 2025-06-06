@@ -4,6 +4,8 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #define COMM_FILE_PATH "/tmp/comm_file"
 typedef enum {
@@ -25,7 +27,7 @@ int read_int_from_keyboard(){
 }
 
 int write_file(char* buffer){
-    int fd = open(COMM_FILE_PATH, O_WRONLY | O_CREAT | O_TRUNC, 0644); // open, create, and truncate file
+    int fd = open(COMM_FILE_PATH, O_WRONLY | O_TRUNC, 0644); // open, create, and truncate file
     if (fd < 0) {
         perror("Failed to open device for writing");
         return -1;
@@ -59,6 +61,8 @@ int main(){
     State user_input = STATE_WAIT;
     char *user_input_str = NULL;
     
+    mkfifo(COMM_FILE_PATH, 0666);
+
     while(1){
         switch (user_input){
             case STATE_WAIT:
