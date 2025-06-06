@@ -25,8 +25,8 @@ int read_int_from_keyboard(){
 }
 
 int write_file(char* buffer){
-    int fd = open(COMM_FILE_PATH, O_WRONLY);
-    if (fd <0 ){
+    int fd = open(COMM_FILE_PATH, O_WRONLY | O_CREAT | O_TRUNC, 0644); // open, create, and truncate file
+    if (fd < 0) {
         perror("Failed to open device for writing");
         return -1;
     }
@@ -57,36 +57,52 @@ void print_menu(){
 
 int main(){
     State user_input = STATE_WAIT;
+    char *user_input_str = NULL;
     
     while(1){
         switch (user_input){
             case STATE_WAIT:
                 print_menu();
                 user_input = read_int_from_keyboard();
+                user_input_str = NULL; // Reset the string for new input
                 break;
             case STATE_EXIT:
                 printf("Exiting\n");
                 return 0;
             case STATE_MODE_AUTO:
                 printf("Mode automatic\n");
+                user_input_str = "automatic";
                 user_input = STATE_WAIT;
                 break;
             case STATE_MODE_MANUAL:
                 printf("Mode manual\n");
+                user_input_str = "manual";
                 user_input = STATE_WAIT;
                 break;
             case STATE_INCREASE_FREQUENCY:
                 printf("Increase frequency\n");
+                user_input_str = "higher";
                 user_input = STATE_WAIT;
                 break;
             case STATE_DECREASE_FREQUENCY:
                 printf("Decrease frequency\n");
+                user_input_str = "lower";
                 user_input = STATE_WAIT;
                 break;
             default:
                 printf("Invalid option. Please try again.\n");
                 user_input = STATE_WAIT;
                 break;
+        }
+
+        // Write the user input to the communication file
+        if (user_input_str != NULL) {
+            if (write_file(user_input_str) < 0) {
+                fprintf(stderr, "Failed to write user input to communication file\n");
+            } else {
+                printf("User input '%s' written to communication file\n", user_input_str);
+            }
+            user_input_str = NULL; // Reset the string after writing
         }
 
     }
