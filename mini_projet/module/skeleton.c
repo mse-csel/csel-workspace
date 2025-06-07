@@ -45,6 +45,7 @@ typedef enum{
     temp_class_last,    //iteration purpose
 }temp_class;
 static temp_class current_temp_class = BELOW_35;
+//implicitly linked to temp_class enum
 static int FREQUENCY[] = {
     2, 5, 10, 20
 };
@@ -63,6 +64,7 @@ static struct semaphore sema_auto;
 static struct task_struct* automatic_thread;
 static struct task_struct* blink_thread;
 static const int AUTOMATIC_SLEEP_TIME = 1;  // [s]
+//implicitly linked to temp_class enum
 static const int BLINK_DELAY_SLEEP[] = {
     500, 200, 100, 50
 };
@@ -76,7 +78,7 @@ static const int TEMP_ADDR_CONF = 0x1000;
 
 static struct resource* res = 0;
 static unsigned char* reg = 0;
-static int current_temp_i = -50;   //small enough ot be obviously wrong
+static int current_temp_i = -50;   //small enough to be obviously wrong
 static int current_temp_f = 0;
 
 static dev_t skeleton_dev;
@@ -119,8 +121,8 @@ static int interpret_change_state(void){
                 if(manual == input){
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
-// rationale :  if result is 0, great news. Otherwise it simply mean that the module is removed
-//              either way we can handle ignoring the check of value
+// rationale :  if result is 0, great news. Otherwise it simply mean that the module is removed.
+//              Either way we can handle ignoring the check of value
                     down_interruptible(&sema_auto);
 #pragma GCC diagnostic pop
                 }else if(automatic == input){   //coule be just "else", explicit for future features
@@ -149,6 +151,7 @@ static int interpret_manual_input(void){
                     break;
                 case higher:
                     ret = IS_FOUND;
+                    //if allowed to increase
                     if(current_temp_class != ABOVE_45){
                         set_current_temp_class(current_temp_class+1);
                     }else{}
