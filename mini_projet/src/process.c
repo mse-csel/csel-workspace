@@ -119,7 +119,21 @@ void epoll_process(){
                 else if (tmp_fd == user_comm_fd){ 
                     tmp_int = read_user_comm(user_comm_fd, user_input_buffer);
                     if(tmp_int > 0){
-                        printf("User command: %s\n", user_input_buffer);
+                        write_device(user_input_buffer);
+                        
+                        if(strcmp(user_input_buffer, "manual") == 0){
+                            current_mode = MANUAL_MODE;
+                            mode_string = "manual";
+                        }
+                        else if(strcmp(user_input_buffer, "automatic") == 0){
+                            current_mode = AUTOMATIC_MODE;
+                            mode_string = "automatic";
+                        }
+                        else{
+                            current_mode = current_mode;
+                            mode_string = mode_string;
+                        }
+                        ssd1306_clear_display();
                     }else if(0 == tmp_int){
                         epoll_ctl(epoll_fd, EPOLL_CTL_DEL, user_comm_fd, 0);
                         close(user_comm_fd);
