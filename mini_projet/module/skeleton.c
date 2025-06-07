@@ -13,6 +13,9 @@
 #include <linux/delay.h>        // ssleep
 #include <linux/gpio.h>         // led management
 
+// led management example can be found here : 
+//  https://forum.allaboutcircuits.com/threads/kernel-module-for-fleshing-led.143831/
+
 //--- global/static values
 
 static const int NOT_FOUND = 0;
@@ -181,7 +184,6 @@ static void interpret_input(void){
         }
     }else{}
     if(NOT_FOUND == status){
-        pr_info("unknown argument %s in %s mode\n", tmp_str, STATE_NAME[current_state]);
     }else{}
     return;
 }
@@ -311,11 +313,9 @@ static struct file_operations skeleton_fops = {
 // init module (modprobe, insmod, ...)
 static int __init skeleton_init(void){
     int status;
-    pr_info("hello there, mini_project module loaded\n");
     res = request_mem_region(TEMP_ADDR_START, TEMP_ADDR_CONF, "allwinner h5 ths");
     reg = ioremap(TEMP_ADDR_START, TEMP_ADDR_CONF);
     if(0 == reg){
-        pr_info("error while trying to map processor register\n");
     }else{}
 
     status = alloc_chrdev_region(&skeleton_dev, 0, 1, "mini_project");
@@ -343,7 +343,6 @@ static void __exit skeleton_exit(void){
     }else{}
     cdev_del(&skeleton_cdev);
     unregister_chrdev_region(skeleton_dev, 1);
-    pr_info("have a nice day\n");
     return;
 }
 

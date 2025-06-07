@@ -27,7 +27,7 @@ void daemonize(){
 
 int main(int argc, char** argv){
     // Create daemon
-    //daemonize();
+    daemonize();
     printf("hello there\n");
     setlogmask(LOG_UPTO(LOG_NOTICE));   //discards info and debug
     openlog("app_epoll", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);

@@ -117,7 +117,7 @@ void epoll_process(){
                     ssd1306_clear_display();
                 } 
                 else if (tmp_fd == user_comm_fd){ 
-                    if(read_user_comm(user_input_buffer) == 0){
+                    if(read_user_comm(user_comm_fd, user_input_buffer) == 0){
                         printf("User command: %s\n", user_input_buffer);
                     }
                 }
