@@ -57,7 +57,7 @@ static const char *gpio_edge_str[] = {
  * @param pin GPIO pin number to export
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_export(uint8_t pin)
+gpio_result_t gpio_export(uint16_t pin)
 {
     char buf[16];
     int fd = open(GPIO_EXPORT_PATH, O_WRONLY);
@@ -84,7 +84,7 @@ gpio_result_t gpio_export(uint8_t pin)
  * @param pin GPIO pin number to unexport
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_unexport(uint8_t pin)
+gpio_result_t gpio_unexport(uint16_t pin)
 {
     char buf[16];
     int fd = open(GPIO_UNEXPORT_PATH, O_WRONLY);
@@ -111,7 +111,7 @@ gpio_result_t gpio_unexport(uint8_t pin)
  * @param direction GPIO_DIRECTION_IN or GPIO_DIRECTION_OUT
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_set_direction(uint8_t pin, gpio_direction_t direction)
+gpio_result_t gpio_set_direction(uint16_t pin, gpio_direction_t direction)
 {
     char path[64];
     // Build path to direction file for this GPIO pin
@@ -141,7 +141,7 @@ gpio_result_t gpio_set_direction(uint8_t pin, gpio_direction_t direction)
  * @param edge Edge detection type (none, rising, falling, both)
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_set_edge(uint8_t pin, gpio_edge_t edge)
+gpio_result_t gpio_set_edge(uint16_t pin, gpio_edge_t edge)
 {
     char path[64];
     // Build path to edge file for this GPIO pin
@@ -171,7 +171,7 @@ gpio_result_t gpio_set_edge(uint8_t pin, gpio_edge_t edge)
  * @param value GPIO_VALUE_HIGH or GPIO_VALUE_LOW
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_write(uint8_t pin, gpio_value_t value)
+gpio_result_t gpio_write(uint16_t pin, gpio_value_t value)
 {
     char path[64];
     // Build path to value file for this GPIO pin
@@ -202,7 +202,7 @@ gpio_result_t gpio_write(uint8_t pin, gpio_value_t value)
  * @param value Pointer to store the read value
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_read(uint8_t pin, gpio_value_t *value)
+gpio_result_t gpio_read(uint16_t pin, gpio_value_t *value)
 {
     char path[64];
     // Build path to value file for this GPIO pin
@@ -233,7 +233,7 @@ gpio_result_t gpio_read(uint8_t pin, gpio_value_t *value)
  * @param pin GPIO pin number
  * @return File descriptor on success, -1 on error
  */
-int gpio_open_fd(uint8_t pin)
+int gpio_open_fd(uint16_t pin)
 {
     char path[64];
     snprintf(path, sizeof(path), GPIO_BASE_PATH "/value", pin);

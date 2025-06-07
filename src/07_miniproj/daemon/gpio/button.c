@@ -48,8 +48,38 @@ int button_ctx_init(button_ctx_t *ctx)
 }
 
 /**
+ * Set callback functions for button events
+ * @param ctx Button context
+ * @param press_cb Callback for button press events (can be NULL)
+ * @param release_cb Callback for button release events (can be NULL)
+ */
+void button_set_callbacks(button_ctx_t *ctx, button_callback_t press_cb, button_callback_t release_cb)
+{
+    if (!ctx) {
+        return;
+    }
+    
+    ctx->press_callback = press_cb;
+    ctx->release_callback = release_cb;
+}
+
+/**
+ * Set user data passed to callback functions
+ * @param ctx Button context
+ * @param user_data User data pointer
+ */
+void button_set_user_data(button_ctx_t *ctx, void *user_data)
+{
+    if (!ctx) {
+        return;
+    }
+    
+    ctx->user_data = user_data;
+}
+
+/**
  * Add a button to the monitoring context
- * Exports GPIO pin, configures it for input with falling edge detection,
+ * Exports GPIO pin, configures it for input with both edge detection,
  * and adds it to the button context for polling
  * @param ctx Button context to add button to
  * @param pin GPIO pin number for the button
@@ -71,7 +101,8 @@ int button_add(button_ctx_t *ctx, uint8_t pin, const char *name)
         return -1;
     }
     
-    if (gpio_set_edge(pin, GPIO_EDGE_FALLING) != GPIO_SUCCESS) {
+    // Set edge detection to both rising and falling for press/release detection
+    if (gpio_set_edge(pin, GPIO_EDGE_BOTH) != GPIO_SUCCESS) {
         gpio_unexport(pin);
         return -1;
     }
@@ -82,7 +113,7 @@ int button_add(button_ctx_t *ctx, uint8_t pin, const char *name)
         return -1;
     }
     
-    // Read initial value to clear any pending events
+    // Read initial value to clear any pending events and set initial state
     char buf;
     lseek(fd, 0, SEEK_SET);
     read(fd, &buf, 1);
@@ -91,6 +122,7 @@ int button_add(button_ctx_t *ctx, uint8_t pin, const char *name)
     btn->pin = pin;
     btn->name = name;
     btn->fd = fd;
+    btn->last_state = (buf == '1') ? 1 : 0;  // 1=released, 0=pressed (active low)
     
     ctx->pfds[ctx->count].fd = fd;
     ctx->pfds[ctx->count].events = POLLPRI | POLLERR;
@@ -101,7 +133,7 @@ int button_add(button_ctx_t *ctx, uint8_t pin, const char *name)
 
 /**
  * Poll for button events using the poll() system call
- * Waits for button press events on all registered buttons
+ * Waits for button press/release events on all registered buttons
  * @param ctx Button context containing buttons to monitor
  * @param timeout_ms Timeout in milliseconds (-1 for infinite wait)
  * @return Number of file descriptors with events, 0 on timeout, -1 on error
@@ -117,15 +149,13 @@ int button_poll(button_ctx_t *ctx, int timeout_ms)
 
 /**
  * Process button events after poll() indicates activity
- * Reads button states and calls the provided callback for each pressed button
+ * Reads button states and calls the appropriate callbacks for press/release events
  * @param ctx Button context with pending events
- * @param callback Function to call when button is pressed
- * @param user_data User data to pass to callback function
  * @return Number of events handled, -1 on error
  */
-int button_handle_events(button_ctx_t *ctx, button_callback_t callback, void *user_data)
+int button_handle_events(button_ctx_t *ctx)
 {
-    if (!ctx || !callback) {
+    if (!ctx) {
         return -1;
     }
     
@@ -134,14 +164,30 @@ int button_handle_events(button_ctx_t *ctx, button_callback_t callback, void *us
     // Check each button for events
     for (size_t i = 0; i < ctx->count; i++) {
         if (ctx->pfds[i].revents & (POLLPRI | POLLERR)) {
-            // Read the GPIO value to acknowledge the event
+            // Read the current GPIO value
             lseek(ctx->pfds[i].fd, 0, SEEK_SET);
             char val;
-            read(ctx->pfds[i].fd, &val, 1);
-            
-            // Call the callback function for this button press
-            callback(&ctx->buttons[i], user_data);
-            events_handled++;
+            if (read(ctx->pfds[i].fd, &val, 1) > 0) {
+                int current_state = (val == '1') ? 1 : 0;  /* 1=released, 0=pressed */
+                
+                // Check for state change
+                if (current_state != ctx->buttons[i].last_state) {
+                    if (current_state == 0) {
+                        // Button released (active low)
+                        if (ctx->release_callback) {
+                            ctx->release_callback(&ctx->buttons[i], ctx->user_data);
+                        }
+                    } else {
+                        // Button pressed (active high)
+                        if (ctx->press_callback) {
+                            ctx->press_callback(&ctx->buttons[i], ctx->user_data);
+                        }
+                    }
+                    
+                    ctx->buttons[i].last_state = current_state;
+                    events_handled++;
+                }
+            }
         }
     }
     

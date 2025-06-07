@@ -34,12 +34,16 @@
 #include <sys/stat.h>
 #include <syslog.h>
 #include "gpio/button.h"
+#include "gpio/led.h"
 #include "oled/oled.h"
 
 /* GPIO pin assignments for buttons */
 #define K1_PIN 0  /* Button K1: Increase frequency */
 #define K2_PIN 2  /* Button K2: Decrease frequency */
 #define K3_PIN 3  /* Button K3: Toggle mode */
+
+/* GPIO pin for Power LED */
+#define POWER_LED_PIN 362  /* GPIOL10/PWR-LED pin */
 
 /* Global daemon state */
 static volatile int running = 1;  /* Main loop control flag */
@@ -48,7 +52,6 @@ static volatile int running = 1;  /* Main loop control flag */
 #define SYSFS_MODE "/sys/devices/platform/csel/mode"       /* auto/manual mode */
 #define SYSFS_TEMP "/sys/devices/platform/csel/temp"       /* temperature reading */
 #define SYSFS_FREQ "/sys/devices/platform/csel/blink_freq" /* PWM/LED frequency */
-
 
 /**
  * Read a value from a sysfs file
@@ -226,6 +229,9 @@ static void button_pressed(const button_t *button, void *user_data)
     (void)user_data;
     int ret;
 
+    // Signal button press with LED
+    led_button_pressed();
+
     if (strcmp(button->name, "K1") == 0) {
         syslog(LOG_INFO, "Button K1 pressed");
         int freq = get_freq();
@@ -266,6 +272,22 @@ static void button_pressed(const button_t *button, void *user_data)
         syslog(LOG_INFO, "Button K3 pressed");
         toggle_mode();
     }
+}
+
+/**
+ * Button release event handler
+ * Signals LED that button has been released
+ * @param button Button structure containing button information
+ * @param user_data User data (unused)
+ */
+static void button_released(const button_t *button, void *user_data)
+{
+    (void)user_data;
+    
+    syslog(LOG_DEBUG, "Button %s released", button->name);
+    
+    // Signal button release with LED
+    led_button_released();
 }
 
 /**
@@ -340,7 +362,7 @@ static void print_usage(const char *prog)
  * Main daemon entry point
  * - Parses command line arguments
  * - Daemonizes the process
- * - Initializes button handling and OLED display
+ * - Initializes button handling, LED, and OLED display
  * - Enters main event loop monitoring button presses
  * - Updates display periodically
  * @param argc Argument count
@@ -369,6 +391,12 @@ int main(int argc, char *argv[])
     openlog("fanmgrd", LOG_PID, LOG_DAEMON);
     syslog(LOG_INFO, "Fanmgr daemon started (PID: %d)", getpid());
     
+    // Initialize LED
+    if (led_init(POWER_LED_PIN) < 0) {
+        syslog(LOG_ERR, "Failed to initialize LED");
+        return EXIT_FAILURE;
+    }
+    
     oled_init();
     update_oled_display();
     
@@ -381,19 +409,24 @@ int main(int argc, char *argv[])
     
     if (button_ctx_init(&button_ctx) < 0) {
         syslog(LOG_ERR, "Failed to initialize button context");
+        led_cleanup();
         return EXIT_FAILURE;
     }
+    
+    // Set button callbacks for press and release events
+    button_set_callbacks(&button_ctx, button_pressed, button_released);
     
     if (button_add(&button_ctx, K1_PIN, "K1") < 0 ||
         button_add(&button_ctx, K2_PIN, "K2") < 0 ||
         button_add(&button_ctx, K3_PIN, "K3") < 0) {
         syslog(LOG_ERR, "Failed to add buttons");
         button_cleanup(&button_ctx);
+        led_cleanup();
         return EXIT_FAILURE;
     }
     
     while (running) {
-        int ret = button_poll(&button_ctx, 1000);
+        int ret = button_poll(&button_ctx, 1000); // Poll for button events with 1 second timeout
         if (ret < 0) {
             if (errno == EINTR) {
                 continue;
@@ -403,12 +436,12 @@ int main(int argc, char *argv[])
         }
         
         if (ret > 0) {
-            button_handle_events(&button_ctx, button_pressed, NULL);
+            button_handle_events(&button_ctx);
             update_oled_display();
         }
         
         static int display_update_counter = 0;
-        if (++display_update_counter >= 5) {
+        if (++display_update_counter >= 5) { // Update display every 5 seconds
             update_oled_display();
             display_update_counter = 0;
         }
@@ -417,7 +450,7 @@ int main(int argc, char *argv[])
     syslog(LOG_INFO, "Shutting down fanmgr daemon");
     closelog();
     button_cleanup(&button_ctx);
+    led_cleanup();
     
     return EXIT_SUCCESS;
 }
-

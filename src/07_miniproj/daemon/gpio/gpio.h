@@ -51,14 +51,14 @@ typedef enum {
  * @param pin GPIO pin number to export
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_export(uint8_t pin);
+gpio_result_t gpio_export(uint16_t pin);
 
 /**
  * @brief Unexport a GPIO pin from userspace
  * @param pin GPIO pin number to unexport
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_unexport(uint8_t pin);
+gpio_result_t gpio_unexport(uint16_t pin);
 
 /**
  * @brief Set GPIO pin direction (input or output)
@@ -66,7 +66,7 @@ gpio_result_t gpio_unexport(uint8_t pin);
  * @param direction GPIO_DIRECTION_IN or GPIO_DIRECTION_OUT
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_set_direction(uint8_t pin, gpio_direction_t direction);
+gpio_result_t gpio_set_direction(uint16_t pin, gpio_direction_t direction);
 
 /**
  * @brief Set GPIO edge detection mode
@@ -74,7 +74,7 @@ gpio_result_t gpio_set_direction(uint8_t pin, gpio_direction_t direction);
  * @param edge Edge detection type
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_set_edge(uint8_t pin, gpio_edge_t edge);
+gpio_result_t gpio_set_edge(uint16_t pin, gpio_edge_t edge);
 
 /**
  * @brief Write a value to GPIO output pin
@@ -82,7 +82,7 @@ gpio_result_t gpio_set_edge(uint8_t pin, gpio_edge_t edge);
  * @param value GPIO_VALUE_HIGH or GPIO_VALUE_LOW
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_write(uint8_t pin, gpio_value_t value);
+gpio_result_t gpio_write(uint16_t pin, gpio_value_t value);
 
 /**
  * @brief Read the current value of a GPIO pin
@@ -90,14 +90,14 @@ gpio_result_t gpio_write(uint8_t pin, gpio_value_t value);
  * @param value Pointer to store the read value
  * @return GPIO_SUCCESS on success, GPIO_ERROR on failure
  */
-gpio_result_t gpio_read(uint8_t pin, gpio_value_t *value);
+gpio_result_t gpio_read(uint16_t pin, gpio_value_t *value);
 
 /**
  * @brief Open file descriptor for GPIO value file
  * @param pin GPIO pin number
  * @return File descriptor on success, -1 on error
  */
-int gpio_open_fd(uint8_t pin);
+int gpio_open_fd(uint16_t pin);
 
 /**
  * @brief Close GPIO file descriptor
