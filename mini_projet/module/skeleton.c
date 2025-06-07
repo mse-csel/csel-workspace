@@ -42,7 +42,7 @@ typedef enum{
     BELOW_40,
     BELOW_45,
     ABOVE_45,
-    temp_range_last,    //iteration purpose
+    temp_class_last,    //iteration purpose
 }temp_class;
 static temp_class current_temp_class = BELOW_35;
 static int FREQUENCY[] = {
@@ -199,11 +199,13 @@ static void update_temp(void){
 }
 
 static int thread_auto_func(void* data){
+    int tmp_class;
     while(!kthread_should_stop()){
         if(0 == down_interruptible(&sema_auto)){
             update_temp();
             //mapping between {35, 40, 45, above} to {0, 1, 2, 3}
-            set_current_temp_class((current_temp_i-35)/5);
+            tmp_class = (current_temp_i-35)/5;
+            set_current_temp_class(tmp_class < temp_class_last ? tmp_class : (temp_class_last-1));
             up(&sema_auto);
             ssleep(AUTOMATIC_SLEEP_TIME);
         }else{}
