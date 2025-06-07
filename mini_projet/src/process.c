@@ -27,7 +27,7 @@ void epoll_process(){
     int power_led_fd, k1_fd, k2_fd, k3_fd;
     int user_comm_fd;
     int timer_led_fd, timer_polling_fd;
-    int i, epoll_status, tmp_fd;
+    int i, epoll_status, tmp_fd, tmp_int;
     long tmp_long;
     struct epoll_event events[MAX_EVENT_FOR_SINGLE_LOOP];
     int epoll_fd = epoll_create1(0);
@@ -69,7 +69,7 @@ void epoll_process(){
 
     //open IPC with user process
     mkfifo(COMM_FILE_PATH, 0666);
-    user_comm_fd = open(COMM_FILE_PATH, O_RDONLY | O_NONBLOCK);
+    user_comm_fd = open(COMM_FILE_PATH, O_RDONLY| O_NONBLOCK);
     add_to_epoll(epoll_fd, user_comm_fd, EPOLLPRI);
 
     //led fd
@@ -117,8 +117,14 @@ void epoll_process(){
                     ssd1306_clear_display();
                 } 
                 else if (tmp_fd == user_comm_fd){ 
-                    if(read_user_comm(user_comm_fd, user_input_buffer) == 0){
+                    tmp_int = read_user_comm(user_comm_fd, user_input_buffer);
+                    if(tmp_int > 0){
                         printf("User command: %s\n", user_input_buffer);
+                    }else if(0 == tmp_int){
+                        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, user_comm_fd, 0);
+                        close(user_comm_fd);
+                        user_comm_fd = open(COMM_FILE_PATH, O_RDONLY | O_NONBLOCK);
+                        add_to_epoll(epoll_fd, user_comm_fd, EPOLLPRI);
                     }
                 }
                 else if(tmp_fd == timer_led_fd){

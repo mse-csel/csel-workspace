@@ -41,7 +41,7 @@ int write_device(char* buffer){
 }
 
 int read_user_comm(int fd, char* buffer){
-    ssize_t bytes_read = read(fd, buffer, 128);//strlen(buffer) - 1);
+    ssize_t bytes_read = read(fd, buffer, 128);
     buffer[bytes_read] = 0;
     if (bytes_read < 0) {
         perror("Failed to read from device");
