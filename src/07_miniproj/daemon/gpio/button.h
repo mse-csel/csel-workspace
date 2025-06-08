@@ -16,9 +16,15 @@
 /** Maximum number of buttons that can be monitored simultaneously */
 #define MAX_BUTTONS 3
 
+typedef enum {
+    BUTTON_K1 = 0,
+    BUTTON_K2,
+    BUTTON_K3
+} button_id_t;
+
 typedef struct {
     uint8_t pin;      /* GPIO pin number */
-    uint8_t id;       /* Logical identifier */
+    button_id_t id;       /* Logical identifier */
     const char *name; /* Human-readable button name */
     int fd;           /* File descriptor for GPIO value file */
     int last_state;   /* Last known button state (0=pressed, 1=released) */
@@ -75,7 +81,7 @@ void button_set_user_data(button_ctx_t *ctx, void *user_data);
  * @param name Human-readable name for the button
  * @return 0 on success, -1 on error
  */
-int button_add(button_ctx_t *ctx, uint8_t pin, uint8_t id, const char *name);
+int button_add(button_ctx_t *ctx, uint8_t pin, button_id_t id, const char *name);
 
 /**
  * @brief Poll for button events

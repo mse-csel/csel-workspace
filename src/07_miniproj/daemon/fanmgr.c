@@ -53,12 +53,6 @@ static volatile int running = 1;  /* Main loop control flag */
 #define SYSFS_TEMP "/sys/devices/platform/csel/temp"       /* temperature reading */
 #define SYSFS_FREQ "/sys/devices/platform/csel/blink_freq" /* PWM/LED frequency */
 
-typedef enum {
-    BUTTON_K1 = 0,
-    BUTTON_K2,
-    BUTTON_K3
-} button_id_t;
-
 /**
  * Read a value from a sysfs file
  * @param path Path to the sysfs file

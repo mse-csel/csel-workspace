@@ -93,7 +93,7 @@ void button_set_user_data(button_ctx_t *ctx, void *user_data)
  * @param name Human-readable name for the button (e.g., "K1", "K2")
  * @return 0 on success, -1 on error
  */
-int button_add(button_ctx_t *ctx, uint8_t pin, uint8_t id, const char *name)
+int button_add(button_ctx_t *ctx, uint8_t pin, button_id_t id, const char *name)
 {
     if (!ctx || !name || ctx->count >= MAX_BUTTONS) {
         return -1;
