@@ -42,14 +42,11 @@ typedef void (*button_callback_t)(const button_t *button, void *user_data);
  * Contains all buttons and polling structures for event detection
  */
 typedef struct {
-    button_t buttons[MAX_BUTTONS];          /* Array of button structures */
-    int epfd;                               /* epoll instance file descriptor */
-    struct epoll_event events[MAX_BUTTONS]; /* Pending events */
-    int pending;                            /* Number of pending events */
-    size_t count;                           /* Number of active buttons */
-    button_callback_t press_callback;       /* Callback for button press events */
-    button_callback_t release_callback;     /* Callback for button release events */
-    void *user_data;                        /* User data passed to callbacks */
+    button_t buttons[MAX_BUTTONS];      /* Array of button structures */
+    size_t count;                       /* Number of active buttons */
+    button_callback_t press_callback;   /* Callback for button press events */
+    button_callback_t release_callback; /* Callback for button release events */
+    void *user_data;                    /* User data passed to callbacks */
 } button_ctx_t;
 
 /**
@@ -84,19 +81,12 @@ void button_set_user_data(button_ctx_t *ctx, void *user_data);
 int button_add(button_ctx_t *ctx, uint8_t pin, button_id_t id, const char *name);
 
 /**
- * @brief Poll for button events
- * @param ctx Button context containing buttons to monitor
- * @param timeout_ms Timeout in milliseconds (-1 for infinite wait)
- * @return Number of file descriptors with events, 0 on timeout, -1 on error
+ * @brief Handle a single button event for a specific button index
+ * @param ctx Button context
+ * @param button_idx Index of the button that had an event
+ * @return 1 if event was handled, 0 if no state change, -1 on error
  */
-int button_poll(button_ctx_t *ctx, int timeout_ms);
-
-/**
- * @brief Process button events after poll indicates activity
- * @param ctx Button context with pending events
- * @return Number of events handled, -1 on error
- */
-int button_handle_events(button_ctx_t *ctx);
+int button_handle_event(button_ctx_t *ctx, size_t button_idx);
 
 /**
  * @brief Clean up button context and release GPIO resources

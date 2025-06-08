@@ -7,7 +7,6 @@ TOOLCHAIN_PATH=/buildroot/output/host/usr/bin/
 TOOLCHAIN=$(TOOLCHAIN_PATH)aarch64-linux-
 CFLAGS=-Wall -Wextra -g -c -O0 -MD -std=gnu11 -Igpio -Ioled
 CFLAGS+=-mcpu=cortex-a53 -funwind-tables
-##CFLAGS+=-O2 -fno-omit-frame-pointer
 OBJDIR=.obj/nano
 
 CC=$(TOOLCHAIN)gcc
@@ -29,6 +28,12 @@ all: $(EXEC)
 $(EXEC): $(OBJS) $(LINKER_SCRIPT)
 	$(LD) $(OBJS) $(LDFLAGS) -o $@
 
+install: $(EXEC)
+	install -m 755 $(EXEC) /rootfs/usr/bin/
+
+uninstall:
+	rm -f /rootfs/usr/bin/$(EXEC)
+
 clean:
 	rm -Rf $(OBJDIR) $(EXEC) $(EXEC)_s .obj *~
 
@@ -36,4 +41,4 @@ clean_all: clean
 
 -include $(OBJS:.o=.d)
 
-.PHONY: all clean clean_all dtb
+.PHONY: all clean clean_all install uninstall

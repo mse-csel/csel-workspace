@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/epoll.h>
 #include <syslog.h>
 #include "gpio/button.h"
 #include "gpio/led.h"
@@ -52,6 +53,13 @@ static volatile int running = 1;  /* Main loop control flag */
 #define SYSFS_MODE "/sys/devices/platform/csel/mode"       /* auto/manual mode */
 #define SYSFS_TEMP "/sys/devices/platform/csel/temp"       /* temperature reading */
 #define SYSFS_FREQ "/sys/devices/platform/csel/blink_freq" /* PWM/LED frequency */
+
+/* FIFO interface for CLI commands */
+#define FIFO_PATH "/tmp/fanmgr_cmd"
+
+/* Global file descriptors */
+static int fifo_fd = -1;
+static int main_epoll_fd = -1;
 
 /**
  * Read a value from a sysfs file
@@ -207,6 +215,64 @@ static void update_oled_display(void)
 }
 
 /**
+ * Create and initialize FIFO for CLI communication
+ * @return 0 on success, -1 on error
+ */
+static int init_fifo(void)
+{
+    unlink(FIFO_PATH);
+    if (mkfifo(FIFO_PATH, 0666) < 0) {
+        perror("mkfifo");
+        return -1;
+    }
+    
+    fifo_fd = open(FIFO_PATH, O_RDONLY | O_NONBLOCK);
+    if (fifo_fd < 0) {
+        perror("open fifo");
+        unlink(FIFO_PATH);
+        return -1;
+    }
+    
+    return 0;
+}
+
+/**
+ * Process commands received from FIFO
+ * @param cmd Command string to process
+ */
+static void process_fifo_command(const char *cmd)
+{
+    char *trimmed = strdup(cmd);
+    char *newline = strchr(trimmed, '\n');
+    if (newline) *newline = '\0';
+    
+    syslog(LOG_INFO, "Received command: %s", trimmed);
+    
+    if (strcmp(trimmed, "freq_up") == 0) {
+        int freq = get_freq();
+        if (freq > 0 && freq < 20) {
+            if (set_freq(freq + 1) == 0) {
+                syslog(LOG_INFO, "Frequency increased to %d", freq + 1);
+            }
+        }
+    } else if (strcmp(trimmed, "freq_down") == 0) {
+        int freq = get_freq();
+        if (freq > 1) {
+            if (set_freq(freq - 1) == 0) {
+                syslog(LOG_INFO, "Frequency decreased to %d", freq - 1);
+            }
+        }
+    } else if (strcmp(trimmed, "toggle_mode") == 0) {
+        toggle_mode();
+    } else {
+        syslog(LOG_WARNING, "Unknown command: %s", trimmed);
+    }
+    
+    free(trimmed);
+    update_oled_display();
+}
+
+/**
  * Signal handler for graceful daemon shutdown
  * @param sig Signal number received
  */
@@ -323,6 +389,7 @@ static void print_usage(const char *prog)
 int main(int argc, char *argv[])
 {
     button_ctx_t button_ctx;
+    struct epoll_event ev;
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
@@ -357,6 +424,14 @@ int main(int argc, char *argv[])
     signal(SIGTERM, signal_handler); // 15 - termination
     signal(SIGTSTP, signal_handler); // 19 - terminal stop signal
     
+    // Create main epoll instance for daemon event loop
+    main_epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+    if (main_epoll_fd < 0) {
+        syslog(LOG_ERR, "Failed to create main epoll instance");
+        led_cleanup();
+        return EXIT_FAILURE;
+    }
+    
     if (button_ctx_init(&button_ctx) < 0) {
         syslog(LOG_ERR, "Failed to initialize button context");
         led_cleanup();
@@ -375,18 +450,70 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     
+    // Initialize FIFO
+    if (init_fifo() < 0) {
+        syslog(LOG_ERR, "Failed to initialize FIFO");
+        button_cleanup(&button_ctx);
+        close(main_epoll_fd);
+        led_cleanup();
+        return EXIT_FAILURE;
+    }
+    
+    // Add individual button GPIO file descriptors to main epoll
+    for (size_t i = 0; i < button_ctx.count; i++) {
+        ev.events = EPOLLPRI | EPOLLERR;  // GPIO edge events use EPOLLPRI
+        ev.data.u32 = (uint32_t)i;  // Store button index
+        if (epoll_ctl(main_epoll_fd, EPOLL_CTL_ADD, button_ctx.buttons[i].fd, &ev) < 0) {
+            syslog(LOG_ERR, "Failed to add button %zu GPIO fd to main epoll", i);
+            close(fifo_fd);
+            button_cleanup(&button_ctx);
+            close(main_epoll_fd);
+            led_cleanup();
+            return EXIT_FAILURE;
+        }
+    }
+    
+    // Add FIFO to main epoll
+    ev.events = EPOLLIN;
+    ev.data.fd = fifo_fd;
+    if (epoll_ctl(main_epoll_fd, EPOLL_CTL_ADD, fifo_fd, &ev) < 0) {
+        syslog(LOG_ERR, "Failed to add FIFO to main epoll");
+        close(fifo_fd);
+        button_cleanup(&button_ctx);
+        close(main_epoll_fd);
+        led_cleanup();
+        return EXIT_FAILURE;
+    }
+    
     while (running) {
-        int ret = button_poll(&button_ctx, 1000); // Poll for button events with 1 second timeout
+        struct epoll_event main_events[10];
+        int ret = epoll_wait(main_epoll_fd, main_events, 10, 1000); // 1 second timeout
         if (ret < 0) {
             if (errno == EINTR) {
                 continue;
             }
-            syslog(LOG_ERR, "poll failed: %s", strerror(errno));
+            syslog(LOG_ERR, "epoll_wait failed: %s", strerror(errno));
             break;
         }
         
         if (ret > 0) {
-            button_handle_events(&button_ctx);
+            for (int i = 0; i < ret; i++) {
+                int fd = main_events[i].data.fd;
+                
+                if (fd == fifo_fd) {
+                    // Handle FIFO command
+                    char buf[256];
+                    ssize_t n = read(fifo_fd, buf, sizeof(buf) - 1);
+                    if (n > 0) {
+                        buf[n] = '\0';
+                        process_fifo_command(buf);
+                    }
+                } else {
+                    // Handle GPIO button event directly
+                    uint32_t button_idx = main_events[i].data.u32;
+                    button_handle_event(&button_ctx, button_idx);
+                }
+            }
             update_oled_display();
         }
         
@@ -399,6 +526,15 @@ int main(int argc, char *argv[])
 
     syslog(LOG_INFO, "Shutting down fanmgr daemon");
     closelog();
+    
+    // Cleanup resources
+    if (fifo_fd >= 0) {
+        close(fifo_fd);
+        unlink(FIFO_PATH);
+    }
+    if (main_epoll_fd >= 0) {
+        close(main_epoll_fd);
+    }
     button_cleanup(&button_ctx);
     led_cleanup();
 

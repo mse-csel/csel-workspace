@@ -45,12 +45,6 @@ int button_ctx_init(button_ctx_t *ctx)
     }
     
     memset(ctx, 0, sizeof(*ctx));
-    ctx->epfd = epoll_create1(0);
-    if (ctx->epfd < 0) {
-        perror("epoll_create1");
-        return -1;
-    }
-    ctx->pending = 0;
     return 0;
 }
 
@@ -130,82 +124,49 @@ int button_add(button_ctx_t *ctx, uint8_t pin, button_id_t id, const char *name)
     btn->name = name;
     btn->id = id;
     btn->fd = fd;
-    btn->last_state = (buf == '1') ? 1 : 0;  // 1=released, 0=pressed (active low)
-
-    // Initialize epoll event for this button
-    struct epoll_event ev = {0};
-    ev.events = EPOLLPRI | EPOLLERR;
-    ev.data.u32 = ctx->count;
-    if (epoll_ctl(ctx->epfd, EPOLL_CTL_ADD, fd, &ev) < 0) {
-        perror("epoll_ctl");
-        gpio_close_fd(fd);
-        gpio_unexport(pin);
-        return -1;
-    }
+    btn->last_state = (buf == '1') ? 1 : 0;
 
     ctx->count++;
     return 0;
 }
 
 /**
- * TODO
- * @param ctx Button context containing buttons to monitor
- * @param timeout_ms Timeout in milliseconds (-1 for infinite wait)
- * @return Number of file descriptors with events, 0 on timeout, -1 on error
+ * Handle a single button event for a specific button index
+ * Reads GPIO state and calls appropriate callback if state changed
+ * @param ctx Button context
+ * @param button_idx Index of the button that had an event
+ * @return 1 if event was handled, 0 if no state change, -1 on error
  */
-int button_poll(button_ctx_t *ctx, int timeout_ms)
+int button_handle_event(button_ctx_t *ctx, size_t button_idx)
 {
-    if (!ctx || ctx->count == 0) {
+    if (!ctx || button_idx >= ctx->count) {
         return -1;
     }
 
-    int n = epoll_wait(ctx->epfd, ctx->events, ctx->count, timeout_ms);
-    if (n >= 0)
-        ctx->pending = n;
-    return n;
-}
+    button_t *button = &ctx->buttons[button_idx];
 
-/**
- * Process button events after poll() indicates activity
- * Reads button states and calls the appropriate callbacks for press/release events
- * @param ctx Button context with pending events
- * @return Number of events handled, -1 on error
- */
-int button_handle_events(button_ctx_t *ctx)
-{
-    if (!ctx) {
-        return -1;
+    // Read current GPIO value to clear interrupt
+    char value;
+    lseek(button->fd, 0, SEEK_SET);
+    if (read(button->fd, &value, 1) <= 0) {
+        return -1;  // Error reading GPIO value
     }
-
-    int events_handled = 0;
-
-    for (int i = 0; i < ctx->pending; i++) {
-        int idx = ctx->events[i].data.u32;
-        if ((size_t)idx >= ctx->count)
-            continue;
-
-        lseek(ctx->buttons[idx].fd, 0, SEEK_SET);
-        char val;
-        if (read(ctx->buttons[idx].fd, &val, 1) > 0) {
-            int current_state = (val == '1') ? 1 : 0;
-
-            if (current_state != ctx->buttons[idx].last_state) {
-                if (current_state == 0) {
-                    if (ctx->release_callback)
-                        ctx->release_callback(&ctx->buttons[idx], ctx->user_data);
-                } else {
-                    if (ctx->press_callback)
-                        ctx->press_callback(&ctx->buttons[idx], ctx->user_data);
-                }
-
-                ctx->buttons[idx].last_state = current_state;
-                events_handled++;
+        int current_state = (value == '1') ? 1 : 0;  // 0=released, 1=pressed (active high)
+        
+        // Check for state change
+        if (current_state != button->last_state) {
+            button->last_state = current_state;
+            
+            // Call appropriate callback
+            if (current_state == 0 && ctx->release_callback) {  // Button released
+                ctx->release_callback(button, ctx->user_data);
+            } else if (current_state == 1 && ctx->press_callback) {  // Button pressed
+                ctx->press_callback(button, ctx->user_data);
             }
+            return 1; // Event handled
         }
-    }
 
-    ctx->pending = 0;
-    return events_handled;
+    return 0;  // No state change detected
 }
 
 /**
@@ -223,9 +184,6 @@ void button_cleanup(button_ctx_t *ctx)
         gpio_close_fd(ctx->buttons[i].fd);
         gpio_unexport(ctx->buttons[i].pin);
     }
-
-    if (ctx->epfd >= 0)
-        close(ctx->epfd);
 
     memset(ctx, 0, sizeof(*ctx));
 }

@@ -190,6 +190,4 @@ void led_cleanup(void)
     
     pthread_mutex_unlock(&led_ctrl.mutex);
     pthread_mutex_destroy(&led_ctrl.mutex);
-    
-    syslog(LOG_INFO, "LED cleaned up");
 }
