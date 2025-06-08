@@ -53,6 +53,12 @@ static volatile int running = 1;  /* Main loop control flag */
 #define SYSFS_TEMP "/sys/devices/platform/csel/temp"       /* temperature reading */
 #define SYSFS_FREQ "/sys/devices/platform/csel/blink_freq" /* PWM/LED frequency */
 
+typedef enum {
+    BUTTON_K1 = 0,
+    BUTTON_K2,
+    BUTTON_K3
+} button_id_t;
+
 /**
  * Read a value from a sysfs file
  * @param path Path to the sysfs file
@@ -232,45 +238,53 @@ static void button_pressed(const button_t *button, void *user_data)
     // Signal button press with LED
     led_button_pressed();
 
-    if (strcmp(button->name, "K1") == 0) {
-        syslog(LOG_INFO, "Button K1 pressed");
-        int freq = get_freq();
-        if (freq > 0 && freq < 20) {
-            freq++;
-        } else if (freq >= 20) {
-            freq = 20;
-        } else {
-            syslog(LOG_ERR, "Failed to get frequency");
-            return;
+    switch (button->id) {
+        case BUTTON_K1: {
+            syslog(LOG_DEBUG, "Button K1 pressed");
+            int freq = get_freq();
+            if (freq > 0 && freq < 20) {
+                freq++;
+            } else if (freq >= 20) {
+                freq = 20;
+            } else {
+                syslog(LOG_ERR, "Failed to get frequency");
+                return;
+            }
+            if (freq > 0)
+                ret = set_freq(freq);
+            if (ret < 0) {
+                syslog(LOG_ERR, "Failed to set frequency to %d", freq);
+            } else {
+                syslog(LOG_DEBUG, "Frequency set to %d", freq);
+            }
+            break;
         }
-        if (freq > 0)
-            ret = set_freq(freq);
-        if (ret < 0) {
-            syslog(LOG_ERR, "Failed to set frequency to %d", freq);
-        } else {
-            syslog(LOG_INFO, "Frequency set to %d", freq);
+        case BUTTON_K2: {
+            syslog(LOG_DEBUG, "Button K2 pressed");
+            int freq = get_freq();
+            if (freq > 1) {
+                freq--;
+            } else if (freq == 1) {
+                syslog(LOG_DEBUG, "Frequency is already at minimum");
+            } else {
+                syslog(LOG_ERR, "Failed to get frequency");
+                return;
+            }
+            if (freq > 0)
+                ret = set_freq(freq);
+            if (ret < 0) {
+                syslog(LOG_ERR, "Failed to set frequency to %d", freq);
+            } else {
+                syslog(LOG_DEBUG, "Frequency set to %d", freq);
+            }
+            break;
         }
-    } else if (strcmp(button->name, "K2") == 0) {
-        syslog(LOG_INFO, "Button K2 pressed");
-        int freq = get_freq();
-        if (freq > 1) {
-            freq--;
-        } else if (freq == 1) {
-            syslog(LOG_INFO, "Frequency is already at minimum");
-        } else {
-            syslog(LOG_ERR, "Failed to get frequency");
-            return;
-        }
-        if (freq > 0)
-            ret = set_freq(freq);
-        if (ret < 0) {
-            syslog(LOG_ERR, "Failed to set frequency to %d", freq);
-        } else {
-            syslog(LOG_INFO, "Frequency set to %d", freq);
-        }
-    } else if (strcmp(button->name, "K3") == 0) {
-        syslog(LOG_INFO, "Button K3 pressed");
-        toggle_mode();
+        case BUTTON_K3:
+            syslog(LOG_DEBUG, "Button K3 pressed");
+            toggle_mode();
+            break;
+        default:
+            break;
     }
 }
 
@@ -288,63 +302,6 @@ static void button_released(const button_t *button, void *user_data)
     
     // Signal button release with LED
     led_button_released();
-}
-
-/**
- * Daemonize the process using double-fork technique
- * - Forks twice to ensure process becomes a proper daemon
- * - Detaches from controlling terminal
- * - Changes working directory to root
- * - Redirects standard streams to /dev/null
- * @return 0 on success, -1 on error
- */
-static int daemonize(void)
-{
-    pid_t pid;
-
-    pid = fork();
-    if (pid < 0) {
-        perror("fork");
-        return -1;
-    }
-    
-    if (pid > 0) {
-        exit(EXIT_SUCCESS);
-    }
-
-    if (setsid() < 0) {
-        perror("setsid");
-        return -1;
-    }
-
-    signal(SIGHUP, SIG_IGN);
-
-    pid = fork();
-    if (pid < 0) {
-        perror("second fork");
-        return -1;
-    }
-    
-    if (pid > 0) {
-        exit(EXIT_SUCCESS);
-    }
-
-    if (chdir("/") < 0) {
-        perror("chdir");
-        return -1;
-    }
-
-    umask(0);
-
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
-
-    open("/dev/null", O_RDONLY);
-    open("/dev/null", O_WRONLY);
-    open("/dev/null", O_WRONLY);
-
-    return 0;
 }
 
 /**
@@ -383,8 +340,7 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
     }
-    
-    if (daemonize() < 0) {
+    if (daemon(0, 0) < 0) {
         syslog(LOG_ERR, "Failed to daemonize\n");
         return EXIT_FAILURE;
     }
@@ -416,9 +372,9 @@ int main(int argc, char *argv[])
     // Set button callbacks for press and release events
     button_set_callbacks(&button_ctx, button_pressed, button_released);
     
-    if (button_add(&button_ctx, K1_PIN, "K1") < 0 ||
-        button_add(&button_ctx, K2_PIN, "K2") < 0 ||
-        button_add(&button_ctx, K3_PIN, "K3") < 0) {
+    if (button_add(&button_ctx, K1_PIN, BUTTON_K1, "K1") < 0 ||
+        button_add(&button_ctx, K2_PIN, BUTTON_K2, "K2") < 0 ||
+        button_add(&button_ctx, K3_PIN, BUTTON_K3, "K3") < 0) {
         syslog(LOG_ERR, "Failed to add buttons");
         button_cleanup(&button_ctx);
         led_cleanup();
@@ -451,6 +407,6 @@ int main(int argc, char *argv[])
     closelog();
     button_cleanup(&button_ctx);
     led_cleanup();
-    
+
     return EXIT_SUCCESS;
 }

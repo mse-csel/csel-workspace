@@ -29,15 +29,6 @@
 #include <pthread.h>
 #include <syslog.h>
 
-/* LED control state */
-typedef struct {
-    uint16_t pin;                    /* GPIO pin number for LED */
-    int initialized;                /* Initialization flag */
-    int current_state;              /* Current LED state (0=OFF, 1=ON) */
-    int button_count;               /* Number of buttons currently pressed */
-    pthread_mutex_t mutex;          /* Thread safety mutex */
-} led_control_t;
-
 static led_control_t led_ctrl = {0};
 
 /**

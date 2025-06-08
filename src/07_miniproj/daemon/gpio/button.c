@@ -18,7 +18,7 @@
  * Abstract: Button GPIO-based library
  * Button handling library for GPIO-based button input management.
  * Provides functionality to monitor multiple buttons using Linux sysfs
- * GPIO interface with poll-based event detection for button presses.
+ * GPIO interface with event-driven detection for button presses using epoll.
  *
  * Author:  Bastien Veuthey
  * Date:    07.06.2025
@@ -30,6 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/epoll.h>
 
 /**
  * Initialize button context structure
@@ -44,6 +45,12 @@ int button_ctx_init(button_ctx_t *ctx)
     }
     
     memset(ctx, 0, sizeof(*ctx));
+    ctx->epfd = epoll_create1(0);
+    if (ctx->epfd < 0) {
+        perror("epoll_create1");
+        return -1;
+    }
+    ctx->pending = 0;
     return 0;
 }
 
@@ -86,7 +93,7 @@ void button_set_user_data(button_ctx_t *ctx, void *user_data)
  * @param name Human-readable name for the button (e.g., "K1", "K2")
  * @return 0 on success, -1 on error
  */
-int button_add(button_ctx_t *ctx, uint8_t pin, const char *name)
+int button_add(button_ctx_t *ctx, uint8_t pin, uint8_t id, const char *name)
 {
     if (!ctx || !name || ctx->count >= MAX_BUTTONS) {
         return -1;
@@ -121,19 +128,27 @@ int button_add(button_ctx_t *ctx, uint8_t pin, const char *name)
     button_t *btn = &ctx->buttons[ctx->count];
     btn->pin = pin;
     btn->name = name;
+    btn->id = id;
     btn->fd = fd;
     btn->last_state = (buf == '1') ? 1 : 0;  // 1=released, 0=pressed (active low)
-    
-    ctx->pfds[ctx->count].fd = fd;
-    ctx->pfds[ctx->count].events = POLLPRI | POLLERR;
-    
+
+    // Initialize epoll event for this button
+    struct epoll_event ev = {0};
+    ev.events = EPOLLPRI | EPOLLERR;
+    ev.data.u32 = ctx->count;
+    if (epoll_ctl(ctx->epfd, EPOLL_CTL_ADD, fd, &ev) < 0) {
+        perror("epoll_ctl");
+        gpio_close_fd(fd);
+        gpio_unexport(pin);
+        return -1;
+    }
+
     ctx->count++;
     return 0;
 }
 
 /**
- * Poll for button events using the poll() system call
- * Waits for button press/release events on all registered buttons
+ * TODO
  * @param ctx Button context containing buttons to monitor
  * @param timeout_ms Timeout in milliseconds (-1 for infinite wait)
  * @return Number of file descriptors with events, 0 on timeout, -1 on error
@@ -143,8 +158,11 @@ int button_poll(button_ctx_t *ctx, int timeout_ms)
     if (!ctx || ctx->count == 0) {
         return -1;
     }
-    
-    return poll(ctx->pfds, ctx->count, timeout_ms);
+
+    int n = epoll_wait(ctx->epfd, ctx->events, ctx->count, timeout_ms);
+    if (n >= 0)
+        ctx->pending = n;
+    return n;
 }
 
 /**
@@ -158,39 +176,35 @@ int button_handle_events(button_ctx_t *ctx)
     if (!ctx) {
         return -1;
     }
-    
+
     int events_handled = 0;
-    
-    // Check each button for events
-    for (size_t i = 0; i < ctx->count; i++) {
-        if (ctx->pfds[i].revents & (POLLPRI | POLLERR)) {
-            // Read the current GPIO value
-            lseek(ctx->pfds[i].fd, 0, SEEK_SET);
-            char val;
-            if (read(ctx->pfds[i].fd, &val, 1) > 0) {
-                int current_state = (val == '1') ? 1 : 0;  /* 1=released, 0=pressed */
-                
-                // Check for state change
-                if (current_state != ctx->buttons[i].last_state) {
-                    if (current_state == 0) {
-                        // Button released (active low)
-                        if (ctx->release_callback) {
-                            ctx->release_callback(&ctx->buttons[i], ctx->user_data);
-                        }
-                    } else {
-                        // Button pressed (active high)
-                        if (ctx->press_callback) {
-                            ctx->press_callback(&ctx->buttons[i], ctx->user_data);
-                        }
-                    }
-                    
-                    ctx->buttons[i].last_state = current_state;
-                    events_handled++;
+
+    for (int i = 0; i < ctx->pending; i++) {
+        int idx = ctx->events[i].data.u32;
+        if ((size_t)idx >= ctx->count)
+            continue;
+
+        lseek(ctx->buttons[idx].fd, 0, SEEK_SET);
+        char val;
+        if (read(ctx->buttons[idx].fd, &val, 1) > 0) {
+            int current_state = (val == '1') ? 1 : 0;
+
+            if (current_state != ctx->buttons[idx].last_state) {
+                if (current_state == 0) {
+                    if (ctx->release_callback)
+                        ctx->release_callback(&ctx->buttons[idx], ctx->user_data);
+                } else {
+                    if (ctx->press_callback)
+                        ctx->press_callback(&ctx->buttons[idx], ctx->user_data);
                 }
+
+                ctx->buttons[idx].last_state = current_state;
+                events_handled++;
             }
         }
     }
-    
+
+    ctx->pending = 0;
     return events_handled;
 }
 
@@ -209,6 +223,9 @@ void button_cleanup(button_ctx_t *ctx)
         gpio_close_fd(ctx->buttons[i].fd);
         gpio_unexport(ctx->buttons[i].pin);
     }
-    
+
+    if (ctx->epfd >= 0)
+        close(ctx->epfd);
+
     memset(ctx, 0, sizeof(*ctx));
 }

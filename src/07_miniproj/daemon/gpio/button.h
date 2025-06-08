@@ -11,19 +11,17 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <poll.h>
+#include <sys/epoll.h>
 
 /** Maximum number of buttons that can be monitored simultaneously */
 #define MAX_BUTTONS 3
 
-/**
- * @brief Structure representing a single button
- */
 typedef struct {
-    uint8_t pin;        /* GPIO pin number */
-    const char *name;   /* Human-readable button name */
-    int fd;             /* File descriptor for GPIO value file */
-    int last_state;     /* Last known button state (0=pressed, 1=released) */
+    uint8_t pin;      /* GPIO pin number */
+    uint8_t id;       /* Logical identifier */
+    const char *name; /* Human-readable button name */
+    int fd;           /* File descriptor for GPIO value file */
+    int last_state;   /* Last known button state (0=pressed, 1=released) */
 } button_t;
 
 /**
@@ -38,12 +36,14 @@ typedef void (*button_callback_t)(const button_t *button, void *user_data);
  * Contains all buttons and polling structures for event detection
  */
 typedef struct {
-    button_t buttons[MAX_BUTTONS];      /* Array of button structures */
-    struct pollfd pfds[MAX_BUTTONS];    /* Poll file descriptors for each button */
-    size_t count;                       /* Number of active buttons */
-    button_callback_t press_callback;   /* Callback for button press events */
-    button_callback_t release_callback; /* Callback for button release events */
-    void *user_data;                    /* User data passed to callbacks */
+    button_t buttons[MAX_BUTTONS];          /* Array of button structures */
+    int epfd;                               /* epoll instance file descriptor */
+    struct epoll_event events[MAX_BUTTONS]; /* Pending events */
+    int pending;                            /* Number of pending events */
+    size_t count;                           /* Number of active buttons */
+    button_callback_t press_callback;       /* Callback for button press events */
+    button_callback_t release_callback;     /* Callback for button release events */
+    void *user_data;                        /* User data passed to callbacks */
 } button_ctx_t;
 
 /**
@@ -75,7 +75,7 @@ void button_set_user_data(button_ctx_t *ctx, void *user_data);
  * @param name Human-readable name for the button
  * @return 0 on success, -1 on error
  */
-int button_add(button_ctx_t *ctx, uint8_t pin, const char *name);
+int button_add(button_ctx_t *ctx, uint8_t pin, uint8_t id, const char *name);
 
 /**
  * @brief Poll for button events
