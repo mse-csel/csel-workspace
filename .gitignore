@@ -33,3 +33,6 @@ solutions/03_drivers/sample01/main3
 solutions/**/build
 
 /SOLUTION
+
+boot-scripts/boot.cifs
+boot-scripts/boot.net
