@@ -1,6 +1,4 @@
-// Project tasks configuration. See https://zed.dev/docs/tasks for documentation.
-//
-// Example:
+
 [
   {
     "label": "Get buildroot",
@@ -50,5 +48,17 @@
     "show_summary": true,
     "show_command": true,
   },
+  {
+    "label": "gdbserver (fibonacci)",
+    "command": "ssh",
+    "args": [
+      "-t",
+      "root@192.168.53.14",
+      "/usr/bin/gdbserver :1234 /workspace/src/01_environment/fibonacci/app 2"
+    ],
+    "use_new_terminal": true
+  },
+
+
 
 ]

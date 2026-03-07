@@ -1,0 +1,23 @@
+// Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see: https://zed.dev/docs/debugger
+[
+  {
+      "label": "Debug Fibonacci (CodeLLDB Remote)",
+      "adapter": "CodeLLDB",
+      "request": "launch",
+      "build": {
+        "command": "make",
+        "args": [
+          "-C",
+          "/workspace/src/01_environment/fibonacci"
+        ]
+      },
+      "program": "/workspace/src/01_environment/fibonacci/app",
+      "cwd": "/workspace/src/01_environment/fibonacci",
+      "processCreateCommands": [
+        "gdb-remote 192.168.53.14:1234"
+      ]
+    }
+]
