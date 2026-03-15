@@ -16,7 +16,8 @@
                 "ms-vscode.cpptools",
                 "ms-vscode.cpptools-extension-pack",
                 "dan-c-underwood.arm",
-                "editorconfig.editorconfig"
+                "editorconfig.editorconfig",
+                "myriad-dreamin.tinymist"
             ]
         }
     }
