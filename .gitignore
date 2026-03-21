@@ -1,35 +1,35 @@
 images
 buildroot-images
-src/*/app
+solutions/*/app
 .obj
 .deleted
 
 .DS_Store
 
-src/**/.Module.*
-src/**/Module.symvers
-src/**/.mymodule.*
-src/**/mymodule.*
-src/**/.modules.*
-src/**/.*.cmd*
-src/**/app
-src/**/core
-src/**/modules.order
-src/**/.skeleton.*
+solutions/**/.Module.*
+solutions/**/Module.symvers
+solutions/**/.mymodule.*
+solutions/**/mymodule.*
+solutions/**/.modules.*
+solutions/**/.*.cmd*
+solutions/**/app
+solutions/**/core
+solutions/**/modules.order
+solutions/**/.skeleton.*
 
 src/**/*.o
 src/**/*.dtb
 src/**/*.ovl
 
-src/02_modules/procstat/procstat
-src/02_modules/procstat/procstat_s
+solutions/02_modules/procstat/procstat
+solutions/02_modules/procstat/procstat_s
 
-src/03_drivers/sample01/main1
-src/03_drivers/sample01/main2
-src/03_drivers/sample01/main3
+solutions/03_drivers/sample01/main1
+solutions/03_drivers/sample01/main2
+solutions/03_drivers/sample01/main3
 
 .zig-cache
 
-src/**/build
+solutions/**/build
 
 /SOLUTION
