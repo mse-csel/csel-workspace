@@ -25,7 +25,8 @@ RUN apt-get update && \
     rsync \
     swig \
     u-boot-tools \
-    wget
+    wget \
+    bear
 
 COPY scripts/* /usr/local/bin/
 RUN chmod +x /usr/local/bin/*
