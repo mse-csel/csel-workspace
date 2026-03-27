@@ -277,6 +277,56 @@ This number matches with this table (#link("https://www.kernel.org/doc/html/late
   ]
 )
 
+//-------------------
+// Exercise 6: Kernel thread
+//-------------------
+
+#task(
+  [
+    Kernel thread
+  ],
+  [
+    Develop a module which allows to instanciate a thread in the kernel. This thread will display a message every 5 seconds. Use the function ```ssleep(5)``` to sleep the thread from ``` linux/delay.h```.
+
+  ]
+)
+
+//-------------------
+// Exercise 7: Sleeping
+//-------------------
+
+#task(
+  [
+    Sleeping
+  ],
+  [
+    Develop a module which instanciate 2 threads in the kernel. The first one will wait a wake up notification from the second thread and will sleep. The second will send the notification every 5 seconds. Then it will sleep. We will use the waitqueue for the sleeping function. To allow debugging, each thread will send a message when it wakes up.
+  ]
+)
+
+//-------------------
+// Exercise 8: Interrupts
+//-------------------
+
+#task(
+  [
+    Interrupts
+  ],
+  [
+
+
+
+    Develop a module which allows to detect every push on the button of the nanopi with interrupt. Every interrupts will send a message for debugging.
+
+    - Use the service ``` gpio_request(<io_nr>, <label>)```
+    - Get the interrupt vector with ``` gpio_to_irq(<io_nr>)```
+    - Extension card information:
+      - k1 - gpio: A, pin_nr=0, io_nr=0
+      - k2 - gpio: A, pin_nr=2, io_nr=2
+      - k3 - gpio: A, pin_nr=3, io_nr=3
+  ]
+)
+
 //-------------------------------------
 // Glossary
 //
