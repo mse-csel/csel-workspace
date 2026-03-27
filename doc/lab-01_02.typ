@@ -215,23 +215,67 @@ mymodule 16384 0 - Live 0xffff8000011bf000 (O)
 #task(
   [What does it mean the 4 values in ```/proc/sys/kernel/printk``` ?],
   [
-    ```bash
-    |> cat /proc/sys/kernel/printk
-    7	4	1	7
-    ```
-    The number specified the level of output in a console.
-
-    This file specifies the log level for:
-    - current: 7
-    - default: 4
-    - minimum: 1
-    - boot-time-default: 7
-
-    This number matches with this table (#link("https://www.kernel.org/doc/html/latest/core-api/printk-basics.html", [printk documentation])):
-    #image("resources/img/printk-log-levels.png")
   ]
 )
 
+We can show what there is in:
+
+```bash
+|> cat /proc/sys/kernel/printk
+7	4	1	7
+```
+The number specified the level of output in a console.
+
+This file specifies the log level for:
+- current: 7
+- default: 4
+- minimum: 1
+- boot-time-default: 7
+
+This number matches with this table (#link("https://www.kernel.org/doc/html/latest/core-api/printk-basics.html", [printk documentation])):
+#image("resources/img/printk-log-levels.png")
+
+//-------------------
+// Exercise 4: Create module with dynamic allocation and a chained list
+//-------------------
+
+#task(
+  [
+    Create module with dynamic allocation and a chained list
+  ],
+  [
+    Create dynamically elements in the kernel. Adapt a kernel module to specify at the installation the number of element to create a initial text.
+    Each element will contain a unique number. The elements are create at the installation of the module adn chained in a list.
+    These elements will be destruct during the uninstallation of the module.
+    Some information messages are emits to allow debugging.
+  ]
+)
+
+//-------------------
+// Exercise 5: Display the processor chip ID, CPU temperature and the MAC adress of the Ethernet controller
+//-------------------
+
+#task(
+  [
+    Display the processor chip ID, CPU temperature and the MAC adress of the Ethernet controller
+  ],
+  [
+    - Chip ID registers: _0x01c1'4200_ to _0x01c1'420c_
+    - 32 bits register of the temperature sensor: _0x01c2'5080_
+    - two 32 bits registers of the Ethernet controller MAC address: _0x01c3'0050_ and _0x01c3'0054_
+
+    To calculate the temperature value, there is this formul:
+    $
+      "temperature" = -1991 dot "register value" / 10 + 223000
+    $
+
+    The chip ID can be verified in ```/proc/iomem```.
+
+    The register value of the temperature can be verified in the file: ```/sys/class/thermal/thermal_zone0/temp```.
+
+    The MAC address can be verified with ``` ifconfig```.
+  ]
+)
 
 //-------------------------------------
 // Glossary
