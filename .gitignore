@@ -1,6 +1,7 @@
 images
 buildroot-images
-solutions/*/app
+solutions/
+src/*/app
 .obj
 .deleted
 
@@ -36,3 +37,4 @@ solutions/**/build
 
 boot-scripts/boot.cifs
 boot-scripts/boot.net
+
