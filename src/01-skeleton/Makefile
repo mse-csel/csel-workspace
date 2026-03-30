@@ -4,12 +4,15 @@ export PATH := /buildroot/output/host/usr/sbin$\
 	:/buildroot/output/host/bin/$\
 	:$(PATH)
 
+MODULE := mymodule
+SOURCE := skeleton
+
 # Part executed when called from kernel build system:
 ifneq ($(KERNELRELEASE),)
-obj-m += mymodule.o		## name of the generated module
+obj-m += $(MODULE).o		## name of the generated module
 
-mymodule-objs := skeleton.o	## list of objects needed for that module
-CFLAGS_skeleton.o := -DDEBUG
+$(MODULE)-objs := $(SOURCE).o	## list of objects needed for that module
+CFLAGS_$(SOURCE).o := -DDEBUG
 
 # Part executed when called from standard make in module source directory:
 else
@@ -25,6 +28,8 @@ clean:
 
 install:
 	$(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(MODPATH) modules_install
+	install -d $(MODPATH)/etc/modprobe.d
+	install -m 0644 $(SOURCE).conf $(MODPATH)/etc/modprobe.d/$(SOURCE).conf
 
 endif
 

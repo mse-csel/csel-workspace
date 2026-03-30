@@ -7,13 +7,13 @@
 
 static char* text = "dummy text";
 module_param(text, charp, 0664);
-static int  elements = 1;
-module_param(elements, int, 0);
+static int  number = 1;
+module_param(number, int, 0);
 
 static int __init skeleton_init(void)
 {
-	pr_info ("Linux module 01 skeleton loaded\n");
-	pr_debug ("  text: %s\n  elements: %d\n", text, elements);
+	pr_info ("Linux module skeleton ex02 loaded\n");
+	pr_debug ("  text: %s\n  number: %d\n", text, number);
 	return 0;
 }
 
@@ -25,7 +25,7 @@ static void __exit skeleton_exit(void)
 module_init (skeleton_init);
 module_exit (skeleton_exit);
 
-MODULE_AUTHOR ("Daniel Gachet <daniel.gachet@hefr.ch>");
+MODULE_AUTHOR ("Fastium <fastium.pro@proton.me>");
+MODULE_AUTHOR ("Klagarge <remi@heredero.ch>");
 MODULE_DESCRIPTION ("Module skeleton");
 MODULE_LICENSE ("GPL");
-
