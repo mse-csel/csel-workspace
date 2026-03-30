@@ -1,3 +1,8 @@
+# IDE
+.idea
+.zed
+.vscode
+
 images
 buildroot-images
 solutions/
@@ -21,6 +26,17 @@ solutions/**/.skeleton.*
 src/**/*.o
 src/**/*.dtb
 src/**/*.ovl
+
+src/**/.Module.*
+src/**/Module.symvers
+src/**/.mymodule.*
+src/**/mymodule.*
+src/**/.modules.*
+src/**/.*.cmd*
+src/**/app
+src/**/core
+src/**/modules.order
+src/**/.skeleton.*
 
 solutions/02_modules/procstat/procstat
 solutions/02_modules/procstat/procstat_s
