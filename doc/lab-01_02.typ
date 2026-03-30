@@ -1,5 +1,5 @@
 // #import "@preview/hei-synd-report:0.1.1": *
-#import "@preview/hei-synd-thesis:0.3.1": *
+#import "@preview/hei-synd-thesis:0.4.0": *
 #import "/doc/metadata.typ": *
 #import "/doc/resources/glossary.typ": *
 #show:make-glossary
@@ -56,7 +56,10 @@ In this laboratory, we see how to setup our environnement and how to have severa
 
 We also see how to debug our system with a remote debugger. That allow us to use debug in our code editor (vscode) a programm that run on the target.
 
-// PLACEHOLEDER SCHEMA
+#figure(
+  image("/doc/resources/img/dev-environment.drawio.svg"),
+  caption: "Development environment schema"
+) <fig:dev-env>
 
 
 == Questions
@@ -99,6 +102,19 @@ If we develop only user space program, we don't need to load kernel by tftp. But
 #pagebreak()
 = Linux Kernel Programming
 
+== Cheatsheet commands
+- `modinfo <module.ko>`: display information about a kernel module
+- `insmod <module.ko>`: install a kernel module (without checking for dependencies)
+- `rmmod <module.ko>`: uninstall a kernel module
+- `lsmod`: list the currently loaded kernel modules
+- `dmesg`: display the kernel log
+- `cat /proc/modules`: display the currently loaded kernel modules with more details
+- `modprobe <module>`: install a kernel module and its dependencies
+- `modprobe -r <module>`: uninstall a kernel module and its dependencies
+- `make`: build the kernel module
+- `make install`: install the kernel module in the root filesystem
+
+
 == Exercises
 
 //-------------------
@@ -114,7 +130,7 @@ If we develop only user space program, we don't need to load kernel by tftp. But
   Create the skeleton of a kernel module and generate it outside the kernel sources using a Makefile. The module should display a message when it is registered and when it is uninstalled.
 ]
 
-We already have a skeleton in `src/02-modules/exercice01`. We see on the Makefile that the module is generated outside the kernel sources with the `KDIR` variable imported from `src/kernel_settings`. This variable point to the kernel sources.
+We already have a skeleton in `src/02-modules/exercice01` (now `solutions/02_modules/exercice01` that we move to `src/01-skeleton`). We see on the Makefile that the module is generated outside the kernel sources with the `KDIR` variable imported from `src/kernel_settings`. This variable point to the kernel sources.
 The Makefile also use the `PWD` variable to the current directory.
 The `make` command will use these variables to generate the module in the current directory.
 
@@ -129,11 +145,12 @@ $(MAKE) -C $(KDIR) M=$(PWD) ARCH=$(CPU) CROSS_COMPILE=$(TOOLS) modules
 
 ```bash
 |> modinfo mymodule.ko
-filename:       /workspace/src/02_modules/exercice01/mymodule.ko
+filename:       /workspace/src/01-skeleton/mymodule.ko
 license:        GPL
 description:    Module skeleton
-author:         Daniel Gachet <daniel.gachet@hefr.ch>
-depends:
+author:         Klagarge <remi@heredero.ch>
+author:         Fastium <fastium.pro@proton.me>
+depends:        
 name:           mymodule
 vermagic:       5.15.148 SMP preempt mod_unload aarch64
 parm:           text:charp
@@ -174,6 +191,7 @@ mymodule               16384  0
 mymodule 16384 0 - Live 0xffff8000011bf000 (O)
 ···
 ```
+The `/proc/modules` file give us more details about the state of the module. We see it is now live (charged in memory and running)
 
 //--------------
 #subtask[
@@ -199,6 +217,7 @@ mymodule 16384 0 - Live 0xffff8000011bf000 (O)
 [ 3359.811183] Linux module 01 skeleton loaded
 ```
 
+#pagebreak()
 //-------------------
 // Exercise 2: Adapt the kernel module to receive parameters
 //-------------------
@@ -209,13 +228,26 @@ mymodule 16384 0 - Live 0xffff8000011bf000 (O)
   ],
 )
 
+```bash
+|> modprobe mymodule
+[ 3583.616662] Linux module skeleton ex02 loaded
+|> dmesg | tail -5
+[ 3559.279143]   number: 1
+[ 3581.198562] Linux module skeleton unloaded
+[ 3583.616662] Linux module skeleton ex02 loaded
+[ 3583.621085]   text: The answer to the Ultimate Question of Life, The Universe, and Everything
+[ 3583.621085]   number: 42
+|> modprobe -r mymodule
+[ 3588.404778] Linux module skeleton unloaded
+
+```
+
 //-------------------
 // Exercise 3: What does it mean the 4 values in ```/proc/sys/kernel/printk``` ?
 //-------------------
 #task(
   [What does it mean the 4 values in ```/proc/sys/kernel/printk``` ?],
-  [
-  ]
+  []
 )
 
 We can show what there is in:
@@ -226,15 +258,29 @@ We can show what there is in:
 ```
 The number specified the level of output in a console.
 
-This file specifies the log level for:
-- current: 7
-- default: 4
-- minimum: 1
-- boot-time-default: 7
+This file specifies the log level for: \
+current (7), default (4), minimum (1) and boot-time default (7).
 
 This number matches with this table (#link("https://www.kernel.org/doc/html/latest/core-api/printk-basics.html", [printk documentation])):
-#image("resources/img/printk-log-levels.png")
 
+#table(
+  columns: (2fr, 1fr, 3fr),
+
+  [*Name*], [*String*], [*Alias function*],
+
+  [KERN_EMERG], ["0"], [pr_emerg()],
+  [KERN_ALERT], ["1"], [pr_alert()],
+  [KERN_CRIT], ["2"], [pr_crit()],
+  [KERN_ERR], ["3"], [pr_err()],
+  [KERN_WARNING], ["4"], [pr_warning()],
+  [KERN_NOTICE], ["5"], [pr_notice()],
+  [KERN_INFO], ["6"], [pr_info()],
+  [KERN_DEBUG], ["7"], [pr_debug() and pr_devel() if DEBUG is defined],
+  [KERN_DEFAULT], [""], [],
+  [KERN_CONT], ["c"], [pr_cont()],
+)
+
+#pagebreak()
 //-------------------
 // Exercise 4: Create module with dynamic allocation and a chained list
 //-------------------
