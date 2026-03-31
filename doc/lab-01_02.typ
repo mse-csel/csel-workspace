@@ -234,7 +234,7 @@ The `/proc/modules` file give us more details about the state of the module. We 
 |> dmesg | tail -5
 [ 3559.279143]   number: 1
 [ 3581.198562] Linux module skeleton unloaded
-[ 3583.616662] Linux module skeleton ex02 loaded
+[ 3583.616662] Linux module skeleton ex03 loaded
 [ 3583.621085]   text: The answer to the Ultimate Question of Life, The Universe, and Everything
 [ 3583.621085]   number: 42
 |> modprobe -r mymodule
@@ -296,6 +296,22 @@ This number matches with this table (#link("https://www.kernel.org/doc/html/late
     Some information messages are emits to allow debugging.
   ]
 )
+
+To allocate memory in the kernel, we can use the `kcalloc` function. It allows to allocate directly the memory for all element. It's also possible to use `kzalloc` in a loop to allocate memory for each element. We prefer allocate all the memory at once to avoid fragmentation and to be sure all the memory can be allocated.
+
+```bash
+struct element* element_ptr = kcalloc(elements, sizeof(struct element), GFP_KERNEL);
+
+for (int i = 0; i < elements; i++) {
+  struct element* e = element_ptr + i;
+      if (e != 0) {
+          strncpy(e->text, text, TEXT_LENGTH_MAX - 1);
+          e->unique_number = i;
+          list_add_tail(&e->node, &list_unique_elements);
+    pr_info ("add element %d: %s\n", e->unique_number, e->text);
+      }
+  }
+```
 
 //-------------------
 // Exercise 5: Display the processor chip ID, CPU temperature and the MAC adress of the Ethernet controller
