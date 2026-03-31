@@ -49,7 +49,9 @@ void dynAlloc_exit(void) {
         e = list_entry(list_unique_elements.next, struct element, node);
         pr_info ("delete element %d: %s\n", e->unique_number, e->text);
         list_del(&e->node);
-        kfree(e);
+        if (e != 0) {
+            kfree(e);
+        }
     }
 
     pr_info("Memory allocated for dynamic allocation and linked list freed\n");
