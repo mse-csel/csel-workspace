@@ -3,156 +3,46 @@
 #include <linux/init.h>		// needed for macros
 #include <linux/kernel.h>	// needed for debugging
 
-#include <linux/moduleparam.h>	// needed for module parameters
-
-#include <linux/slab.h> // dynamic memory allocation
-#include <linux/list.h> // linked list
-#include <linux/string.h>
-
-#include <linux/ioport.h>
-#include <linux/io.h>
-
-
-#define TEXT_LENGTH_MAX 255
-
-#define CHIP_ID_BASE_ADDR 0x61c14000
-#define TEMPERATURE_SENSOR_BASE_ADDR 0x61C25000
-#define ETHERNET_CONTROLLER_BASE_ADDR 0x61C30000
-
-
-static char* text = "dummy text";
-module_param(text, charp, 0664);
-static int elements = 1;
-module_param(elements, int, 0);
-
-
-// Ex04 - Dynamic memory allocation and linked list
-struct element {
-    char text[TEXT_LENGTH_MAX];
-    int32_t unique_number;
-    struct list_head node;
-};
-
-static LIST_HEAD (list_unique_elements);
-
-
-// Ex05 - Memory-mapped I/O
-static struct resource* resources[3] = {[0] = 0,};
+#include "s02e02-parameters.c"
+#include "s02e04-dynamic_allocation.c"
+#include "s02e05-io_memory_mapped.c"
 
 
 static int __init skeleton_init(void) {
-	pr_info("Linux module skeleton ex05 loaded\n");
-	pr_debug("  text: %s\n  elements: %d\n", text, elements);
-	
+    pr_info("Linux module skeleton ex05 loading...\n");
+	pr_info("--------------------\n");
 
-    // Ex04 - Dynamic memory allocation and linked list
-	struct element* element_ptr = kcalloc(elements, sizeof(struct element), GFP_KERNEL);
-	if (element_ptr == 0) {
-		pr_err("Failed to allocate memory for %d elements\n", elements);
-		return -ENOMEM;
-	}
-	
-	uint8_t i;
-	const uint8_t length = TEXT_LENGTH_MAX - 1;
-	for (i = 0; i < elements; i++) {
-		struct element* e = element_ptr + i;
-        if (e != 0) {
-            strncpy(e->text, text, length);
-            e->unique_number = i;
-            list_add_tail(&e->node, &list_unique_elements);
-			pr_info ("add element %d: %s\n", e->unique_number, e->text);
-        }
-    }
+    // Lab02 - Exercise 2: Parameters
+    parameters_print();
 
-    // Ex05 - Memory-mapped I/O
-    unsigned char* registers[3] = {[0] = 0,};
-    uint32_t chipid[4] = {[0] = 0,};
-    uint32_t temperature = 0;
-    uint32_t mac_address[2] = {[0] = 0,};
+    pr_info("--------------------\n");
 
-    resources[0] = request_mem_region(CHIP_ID_BASE_ADDR, 0x1000, "nanopi - chip ID");
-    resources[1] = request_mem_region(TEMPERATURE_SENSOR_BASE_ADDR, 0x1000, "nanopi - temperature sensor");
-    resources[2] = request_mem_region(ETHERNET_CONTROLLER_BASE_ADDR, 0x1000, "nanopi - Ethernet controller");
-    if (resources[0] == 0) {
-        pr_err("Failed to reserve memory region for chip ID\n");
-        return -EFAULT;
-    }
-     if (resources[1] == 0) {
-        pr_err("Failed to reserve memory region for temperature sensor\n");
-        return -EFAULT;
-    }
-     if (resources[2] == 0) {
-        pr_err("Failed to reserve memory region for Ethernet controller\n");
-        return -EFAULT;
-    }
+    // Lab02 - Exercise 4: Dynamic memory allocation and linked list
+    dynAlloc_init();
 
-    registers[0] = ioremap(CHIP_ID_BASE_ADDR, 0x1000);
-    registers[1] = ioremap(TEMPERATURE_SENSOR_BASE_ADDR, 0x1000);
-    registers[2] = ioremap(ETHERNET_CONTROLLER_BASE_ADDR, 0x1000);
-    if (registers[0] == 0) {
-        pr_err("Failed to map processor registers for chip ID\n");
-        return -EFAULT;
-    }
-     if (registers[1] == 0) {
-        pr_err("Failed to map processor registers for temperature sensor\n");
-        return -EFAULT;
-    }
-     if (registers[2] == 0) {
-        pr_err("Failed to map processor registers for Ethernet controller\n");
-        return -EFAULT;
-    }
+    pr_info("--------------------\n");
 
-    chipid[0] = ioread32(registers[0] + 0x200);
-    chipid[1] = ioread32(registers[0] + 0x204);
-    chipid[2] = ioread32(registers[0] + 0x208);
-    chipid[3] = ioread32(registers[0] + 0x20c);
-    pr_info(
-        "chipid=%08x'%08x'%08x'%08x\n",
-        chipid[0], chipid[1], chipid[2], chipid[3]
-    );
+    // Lab02 - Exercise 5: Memory-mapped I/O
+    ioMemoryMapped_init();
 
-    temperature = -1991 * (int32_t) ioread32(registers[1] + 0x80) / 10 + 223000;
-    pr_info(
-        "temperature=%d (register value: %d)\n",
-        temperature, ioread32(registers[1] + 0x80)
-    );
+    pr_info("--------------------\n");
 
-    mac_address[0] = ioread32(registers[2] + 0x50);
-    mac_address[1] = ioread32(registers[2] + 0x54);
-    pr_info(
-        "mac-addr=%02x:%02x:%02x:%02x:%02x:%02x\n",
-        (mac_address[1] >> 0) & 0xff,
-        (mac_address[1] >> 8) & 0xff,
-        (mac_address[1] >> 16) & 0xff,
-        (mac_address[1] >> 24) & 0xff,
-        (mac_address[0] >> 0) & 0xff,
-        (mac_address[0] >> 8) & 0xff
-    );
-
-    iounmap(registers[0]);
-    iounmap(registers[1]);
-    iounmap(registers[2]);
-
-
+    pr_info("Linux module skeleton loaded\n");
 	return 0;
 }
 
 static void __exit skeleton_exit(void) {
 
-    // Ex04 - Dynamic memory allocation and linked list
-	struct element* e;
+    
+    // Lab02 - Exercise 4: Dynamic memory allocation and linked list
+    dynAlloc_exit();
 
-    while (!list_empty(&list_unique_elements)) {
-        e = list_entry(list_unique_elements.next, struct element, node);
-		pr_info ("delete element %d: %s\n", e->unique_number, e->text);
-        list_del(&e->node);
-        kfree(e);
-    }
+    pr_info("--------------------\n");
 
-    // Ex05 - Memory-mapped I/O
-    if (resources[0] != 0) release_mem_region(CHIP_ID_BASE_ADDR, 0x1000);
-    if (resources[1] != 0) release_mem_region(TEMPERATURE_SENSOR_BASE_ADDR, 0x1000);
-    if (resources[2] != 0) release_mem_region(ETHERNET_CONTROLLER_BASE_ADDR, 0x1000);
+    // Lab02 - Exercise 5: Memory-mapped I/O
+    ioMemoryMapped_exit();
+
+    pr_info("--------------------\n");
 
     pr_info ("Linux module skeleton unloaded\n");
 }
