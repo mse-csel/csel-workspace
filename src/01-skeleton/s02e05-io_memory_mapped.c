@@ -67,7 +67,7 @@ void ioMemoryMapped_init(void) {
     );
 
     // Read values - Temperature
-    temperature = -1991 * (int32_t) ioread32(registers[1] + 0x80) / 10 + 223000;
+    temperature = -1191 * (int32_t) ioread32(registers[1] + 0x80) / 10 + 223000;
     pr_info(
         "temperature=%d (register value: %d)\n",
         temperature, ioread32(registers[1] + 0x80)
