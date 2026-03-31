@@ -369,6 +369,8 @@ registers[0] = ioremap(CHIP_ID_BASE_ADDR, 0x1000);
   ]
 )
 
+Easy exercice, a thread in the kernet is a `struct task_struct*` that can be created with `kthread_run`
+
 //-------------------
 // Exercise 7: Sleeping
 //-------------------

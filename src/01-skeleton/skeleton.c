@@ -6,6 +6,7 @@
 #include "s02e02-parameters.c"
 #include "s02e04-dynamic_allocation.c"
 #include "s02e05-io_memory_mapped.c"
+#include "s02e06-thread.c"
 
 
 static int __init skeleton_init(void) {
@@ -27,6 +28,11 @@ static int __init skeleton_init(void) {
 
     pr_info("--------------------\n");
 
+    // Lab02 - Exercise 6: Kernel thread
+    thread_init();
+
+    pr_info("--------------------\n");
+
     pr_info("Linux module skeleton loaded\n");
 	return 0;
 }
@@ -41,6 +47,11 @@ static void __exit skeleton_exit(void) {
 
     // Lab02 - Exercise 5: Memory-mapped I/O
     ioMemoryMapped_exit();
+
+    pr_info("--------------------\n");
+
+    // Lab02 - Exercise 6: Kernel thread
+    thread_exit();
 
     pr_info("--------------------\n");
 
