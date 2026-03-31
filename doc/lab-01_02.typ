@@ -313,6 +313,7 @@ for (int i = 0; i < elements; i++) {
   }
 ```
 
+#pagebreak()
 //-------------------
 // Exercise 5: Display the processor chip ID, CPU temperature and the MAC adress of the Ethernet controller
 //-------------------
@@ -338,11 +339,20 @@ for (int i = 0; i < elements; i++) {
 )
 
 The resources are savec in a struct: 
-```bash
+```c
 static struct resource* resources[3] = {[0] = 0,};
 ```
 resources[0] is reserved for the chip ID, resources[1] for the temperature sensor and resources[2] for the Ethernet controller.
 
+We first allocate the resources with `request_mem_region` function. Then we can map the physical address to a virtual address with `ioremap` function. Finally, we can read the value of the registers with `ioread32` function. The request fail because we have an overlap with the EEPROM, but we can ignore this error because we can still read the registers with `ioremap` function.
+
+```c
+// Request the resource at (CHIP_ID_BASE_ADDR)
+resources[0] = request_mem_region(CHIP_ID_BASE_ADDR, 0x1000, "nanopi - chip ID");
+
+// Map the physical address (CHIP_ID_BASE_ADDR) to a virtual address (registers[0])
+registers[0] = ioremap(CHIP_ID_BASE_ADDR, 0x1000);
+```
 
 
 //-------------------
