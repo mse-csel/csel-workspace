@@ -331,13 +331,19 @@ for (int i = 0; i < elements; i++) {
       "temperature" = -1991 dot "register value" / 10 + 223000
     $
 
-    The chip ID can be verified in ```/proc/iomem```.
-
-    The register value of the temperature can be verified in the file: ```/sys/class/thermal/thermal_zone0/temp```.
-
+    The chip ID can be verified in ```/proc/iomem```. 
+    The register value of the temperature can be verified in the file: ```/sys/class/thermal/thermal_zone0/temp```. 
     The MAC address can be verified with ``` ifconfig```.
   ]
 )
+
+The resources are savec in a struct: 
+```bash
+static struct resource* resources[3] = {[0] = 0,};
+```
+resources[0] is reserved for the chip ID, resources[1] for the temperature sensor and resources[2] for the Ethernet controller.
+
+
 
 //-------------------
 // Exercise 6: Kernel thread
