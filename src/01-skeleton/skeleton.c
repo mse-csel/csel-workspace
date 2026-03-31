@@ -15,6 +15,10 @@
 
 #define TEXT_LENGTH_MAX 255
 
+#define CHIP_ID_BASE_ADDR 0x61c14000
+#define TEMPERATURE_SENSOR_BASE_ADDR 0x61C25000
+#define ETHERNET_CONTROLLER_BASE_ADDR 0x61C30000
+
 
 static char* text = "dummy text";
 module_param(text, charp, 0664);
@@ -66,17 +70,25 @@ static int __init skeleton_init(void) {
     uint32_t temperature = 0;
     uint32_t mac_address[2] = {[0] = 0,};
 
-    resources[0] = request_mem_region(0x01c14000, 0x1000, "nanopi - chip ID");
-    resources[1] = request_mem_region(0x01C25000, 0x1000, "nanopi - temperature sensor");
-    resources[2] = request_mem_region(0x01C30000, 0x1000, "nanopi - Ethernet controller");
-    if ((resources[0] == 0) || (resources[1] == 0) || (resources[2] == 0)) {
-        pr_err("Failed to reserve memory region for chip ID, temperature sensor or Ethernet controller\n");
+    resources[0] = request_mem_region(CHIP_ID_BASE_ADDR, 0x1000, "nanopi - chip ID");
+    resources[1] = request_mem_region(TEMPERATURE_SENSOR_BASE_ADDR, 0x1000, "nanopi - temperature sensor");
+    resources[2] = request_mem_region(ETHERNET_CONTROLLER_BASE_ADDR, 0x1000, "nanopi - Ethernet controller");
+    if (resources[0] == 0) {
+        pr_err("Failed to reserve memory region for chip ID\n");
+        return -EFAULT;
+    }
+     if (resources[1] == 0) {
+        pr_err("Failed to reserve memory region for temperature sensor\n");
+        return -EFAULT;
+    }
+     if (resources[2] == 0) {
+        pr_err("Failed to reserve memory region for Ethernet controller\n");
         return -EFAULT;
     }
 
-    registers[0] = ioremap(0x01c14000, 0x1000);
-    registers[1] = ioremap(0x01C25000, 0x1000);
-    registers[2] = ioremap(0x01C30000, 0x1000);
+    registers[0] = ioremap(CHIP_ID_BASE_ADDR, 0x1000);
+    registers[1] = ioremap(TEMPERATURE_SENSOR_BASE_ADDR, 0x1000);
+    registers[2] = ioremap(ETHERNET_CONTROLLER_BASE_ADDR, 0x1000);
     if (registers[0] == 0) {
         pr_err("Failed to map processor registers for chip ID\n");
         return -EFAULT;
@@ -138,9 +150,9 @@ static void __exit skeleton_exit(void) {
     }
 
     // Ex05 - Memory-mapped I/O
-    if (resources[0] != 0) release_mem_region(0x01c14000, 0x1000);
-    if (resources[1] != 0) release_mem_region(0x01C25000, 0x1000);
-    if (resources[2] != 0) release_mem_region(0x01C30000, 0x1000);
+    if (resources[0] != 0) release_mem_region(CHIP_ID_BASE_ADDR, 0x1000);
+    if (resources[1] != 0) release_mem_region(TEMPERATURE_SENSOR_BASE_ADDR, 0x1000);
+    if (resources[2] != 0) release_mem_region(ETHERNET_CONTROLLER_BASE_ADDR, 0x1000);
 
     pr_info ("Linux module skeleton unloaded\n");
 }
