@@ -4,22 +4,22 @@
 #include <linux/kernel.h>	// needed for debugging
 
 #include "linux/printk.h"
-#include "s02e02-parameters.c"
+#include "s02-kernel-module/s02e02-parameters.c"
 // #define PARAMETERS
 
-#include "s02e04-dynamic_allocation.c"
+#include "s02-kernel-module/s02e04-dynamic_allocation.c"
 // #define DYNAMIC_ALLOCATION
 
-#include "s02e05-io_memory_mapped.c"
+#include "s02-kernel-module/s02e05-io_memory_mapped.c"
 // #define IO_MEMORY_MAPPED
 
-#include "s02e06-thread.c"
+#include "s02-kernel-module/s02e06-thread.c"
 // #define THREAD
 
-#include "s02e07-sleeping.c"
+#include "s02-kernel-module/s02e07-sleeping.c"
 // #define SLEEPING
 
-#include "s02e08-interrupt.c"
+#include "s02-kernel-module/s02e08-interrupt.c"
 #define INTERRUPT
 
 

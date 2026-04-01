@@ -2,12 +2,10 @@
 #include <linux/init.h>		// needed for macros
 #include <linux/kernel.h>	// needed for debugging
 
-
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/wait.h>
 #include <linux/atomic.h>
-
 
 #define TIMEOUT_S 5
 
@@ -17,7 +15,6 @@ DECLARE_WAIT_QUEUE_HEAD(queue_2);
 static struct task_struct* thread_1;
 static struct task_struct* thread_2;
 static atomic_t trigger = ATOMIC_INIT(0);
-
 
 int thread_skeleton_1(void* data) {
     // must wait 5 seconds and start thread 2
@@ -36,7 +33,6 @@ int thread_skeleton_1(void* data) {
 
         // Wait until thread 2 has reset the trigger
         wait_event_interruptible(queue_1, atomic_read(&trigger) == 0 || kthread_should_stop());
-
     }
 
     return 0;
