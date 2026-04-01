@@ -7,6 +7,7 @@
 #include "s02e04-dynamic_allocation.c"
 #include "s02e05-io_memory_mapped.c"
 #include "s02e06-thread.c"
+#include "s02e07-sleeping.c"
 
 
 static int __init skeleton_init(void) {
@@ -14,22 +15,27 @@ static int __init skeleton_init(void) {
 	pr_info("--------------------\n");
 
     // Lab02 - Exercise 2: Parameters
-    parameters_print();
+    // parameters_print();
 
     pr_info("--------------------\n");
 
     // Lab02 - Exercise 4: Dynamic memory allocation and linked list
-    dynAlloc_init();
+    // dynAlloc_init();
 
     pr_info("--------------------\n");
 
     // Lab02 - Exercise 5: Memory-mapped I/O
-    ioMemoryMapped_init();
+    // ioMemoryMapped_init();
 
     pr_info("--------------------\n");
 
     // Lab02 - Exercise 6: Kernel thread
-    thread_init();
+    // thread_init();
+
+    pr_info("--------------------\n");
+
+    // Lab02 - Exercise 7: Sleeping
+    sleeping_init();
 
     pr_info("--------------------\n");
 
@@ -39,19 +45,24 @@ static int __init skeleton_init(void) {
 
 static void __exit skeleton_exit(void) {
 
-    
+
     // Lab02 - Exercise 4: Dynamic memory allocation and linked list
-    dynAlloc_exit();
+    // dynAlloc_exit();
 
     pr_info("--------------------\n");
 
     // Lab02 - Exercise 5: Memory-mapped I/O
-    ioMemoryMapped_exit();
+    // ioMemoryMapped_exit();
 
     pr_info("--------------------\n");
 
     // Lab02 - Exercise 6: Kernel thread
-    thread_exit();
+    // thread_exit();
+
+    pr_info("--------------------\n");
+
+    // Lab02 - Exercise 7: Sleeping
+    sleeping_exit();
 
     pr_info("--------------------\n");
 
