@@ -371,6 +371,7 @@ registers[0] = ioremap(CHIP_ID_BASE_ADDR, 0x1000);
 
 Easy exercice, a thread in the kernet is a `struct task_struct*` that can be created with `kthread_run`
 
+#pagebreak()
 //-------------------
 // Exercise 7: Sleeping
 //-------------------
@@ -402,9 +403,6 @@ a problem during the implementation, we cannot kill the code.
     Interrupts
   ],
   [
-
-
-
     Develop a module which allows to detect every push on the button of the nanopi with interrupt. Every interrupts will send a message for debugging.
 
     - Use the service ``` gpio_request(<io_nr>, <label>)```
@@ -415,6 +413,18 @@ a problem during the implementation, we cannot kill the code.
       - k3 - gpio: A, pin_nr=3, io_nr=3
   ]
 )
+
+We made a custom structur for the gpio device that contain all useful information like the name and the id.
+```c
+struct gpio_nanopi {
+    int id;
+    char* name;
+};
+static struct gpio_nanopi switchK1 = {0, "K1: GPIOA.0"};
+static struct gpio_nanopi switchK2 = {2, "K2: GPIOA.2"};
+static struct gpio_nanopi switchK3 = {3, "K3: GPIOA.3"};
+```
+
 
 //-------------------------------------
 // Glossary

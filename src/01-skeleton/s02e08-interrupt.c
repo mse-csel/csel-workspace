@@ -6,17 +6,14 @@
 #include <linux/gpio.h>
 #include "linux/printk.h"
 
-#define SWITCH_K1 0
-#define SWITCH_K2 2
-#define SWITCH_K3 3
-
 struct gpio_nanopi {
-    int pin;
+    int id;
     char* name;
 };
+
 static struct gpio_nanopi switchK1 = {0, "K1: GPIOA.0"};
-static struct gpio_nanopi switchK2 = {0, "K2: GPIOA.2"};
-static struct gpio_nanopi switchK3 = {0, "K3: GPIOA.3"};
+static struct gpio_nanopi switchK2 = {2, "K2: GPIOA.2"};
+static struct gpio_nanopi switchK3 = {3, "K3: GPIOA.3"};
 
 irqreturn_t isrGPIO(int irq, void* gpio_struct) {
     struct gpio_nanopi *gpio = (struct gpio_nanopi *)gpio_struct;
@@ -31,9 +28,9 @@ void interrupt_init(void) {
     int status = 0;
 
     // Switch k1
-    if (gpio_request(SWITCH_K1, switchK1.name) == 0) {
+    if (gpio_request(switchK1.id, switchK1.name) == 0) {
         status = request_irq(
-            gpio_to_irq(SWITCH_K1),
+            gpio_to_irq(switchK1.id),
             isrGPIO,
             IRQF_TRIGGER_FALLING | IRQF_SHARED,
             switchK1.name,
@@ -42,9 +39,9 @@ void interrupt_init(void) {
     }
 
     // Switch k2
-    if (gpio_request(SWITCH_K2, switchK2.name) == 0) {
+    if (gpio_request(switchK2.id, switchK2.name) == 0) {
         status = request_irq(
-            gpio_to_irq(SWITCH_K2),
+            gpio_to_irq(switchK2.id),
             isrGPIO,
             IRQF_TRIGGER_FALLING | IRQF_SHARED,
             switchK2.name,
@@ -53,9 +50,9 @@ void interrupt_init(void) {
     }
 
     // Switch k3
-    if (gpio_request(SWITCH_K3, switchK3.name) == 0) {
+    if (gpio_request(switchK3.id, switchK3.name) == 0) {
         status = request_irq(
-            gpio_to_irq(SWITCH_K3),
+            gpio_to_irq(switchK3.id),
             isrGPIO,
             IRQF_TRIGGER_FALLING | IRQF_SHARED,
             switchK3.name,
@@ -69,14 +66,14 @@ void interrupt_init(void) {
 void interrupt_exit(void) {
     pr_info("Exiting interrupts\n");
 
-    gpio_free(SWITCH_K1);
-    free_irq(gpio_to_irq(SWITCH_K1), &switchK1);
+    gpio_free(switchK1.id);
+    free_irq(gpio_to_irq(switchK1.id), &switchK1);
 
-    gpio_free(SWITCH_K2);
-    free_irq(gpio_to_irq(SWITCH_K2), &switchK2);
+    gpio_free(switchK2.id);
+    free_irq(gpio_to_irq(switchK2.id), &switchK2);
 
-    gpio_free(SWITCH_K3);
-    free_irq(gpio_to_irq(SWITCH_K3), &switchK3);
+    gpio_free(switchK3.id);
+    free_irq(gpio_to_irq(switchK3.id), &switchK3);
 
     pr_info ("Interrupt exited\n");
 
