@@ -3,69 +3,105 @@
 #include <linux/init.h>		// needed for macros
 #include <linux/kernel.h>	// needed for debugging
 
+#include "linux/printk.h"
 #include "s02e02-parameters.c"
+// #define PARAMETERS
+
 #include "s02e04-dynamic_allocation.c"
+// #define DYNAMIC_ALLOCATION
+
 #include "s02e05-io_memory_mapped.c"
+// #define IO_MEMORY_MAPPED
+
 #include "s02e06-thread.c"
+// #define THREAD
+
 #include "s02e07-sleeping.c"
+// #define SLEEPING
+
+#include "s02e08-interrupt.c"
+#define INTERRUPT
 
 
 static int __init skeleton_init(void) {
     pr_info("Linux module skeleton ex05 loading...\n");
-	pr_info("--------------------\n");
 
     // Lab02 - Exercise 2: Parameters
-    // parameters_print();
-
-    pr_info("--------------------\n");
+    #ifdef PARAMETERS
+	pr_info("--------------------\n");
+    parameters_print();
+    #endif
 
     // Lab02 - Exercise 4: Dynamic memory allocation and linked list
-    // dynAlloc_init();
-
+    #ifdef DYNAMIC_ALLOCATION
     pr_info("--------------------\n");
+    Alloc_init();
+    #endif
 
     // Lab02 - Exercise 5: Memory-mapped I/O
-    // ioMemoryMapped_init();
-
+    #ifdef IO_MEMORY_MAPPED
     pr_info("--------------------\n");
+    ioMemoryMapped_init();
+    #endif
 
     // Lab02 - Exercise 6: Kernel thread
-    // thread_init();
-
+    #ifdef THREAD
     pr_info("--------------------\n");
+    thread_init();
+    #endif
 
     // Lab02 - Exercise 7: Sleeping
+    #ifdef SLEEPING
+    pr_info("--------------------\n");
     sleeping_init();
+    #endif
+
+    // Lab02 - Exercise 8: Interrupt
+    #ifdef INTERRUPT
+    pr_info("--------------------\n");
+    interrupt_init();
+    #endif
 
     pr_info("--------------------\n");
-
     pr_info("Linux module skeleton loaded\n");
 	return 0;
 }
 
 static void __exit skeleton_exit(void) {
 
+    pr_info("Linux module skeleton unloading...\n");
 
     // Lab02 - Exercise 4: Dynamic memory allocation and linked list
-    // dynAlloc_exit();
-
+    #ifdef DYNAMIC_ALLOCATION
     pr_info("--------------------\n");
+    dynAlloc_exit();
+    #endif
 
     // Lab02 - Exercise 5: Memory-mapped I/O
-    // ioMemoryMapped_exit();
-
+    #ifdef IO_MEMORY_MAPPED
     pr_info("--------------------\n");
+    ioMemoryMapped_exit();
+    #endif
 
     // Lab02 - Exercise 6: Kernel thread
-    // thread_exit();
-
+    #ifdef THREAD
     pr_info("--------------------\n");
+    thread_exit();
+    #endif
 
     // Lab02 - Exercise 7: Sleeping
+    #ifdef SLEEPING
+    pr_info("--------------------\n");
     sleeping_exit();
+    #endif
+
+    // Lab02 - Exercise 8: Interrupt
+    #ifdef INTERRUPT
+    pr_info("--------------------\n");
+    interrupt_exit();
+    #endif
 
     pr_info("--------------------\n");
-
     pr_info ("Linux module skeleton unloaded\n");
 }
 
