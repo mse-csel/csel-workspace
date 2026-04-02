@@ -1,8 +1,10 @@
 #include <stdio.h>
 
 #include "exercice/ex1-memory-oriented.c"
-#define MEMORY_ORIENTED
+// #define MEMORY_ORIENTED
 
+#include "exercice/ex4-character-oriented.c"
+#define CHARACTER_ORIENTED
 
 
 int main() {
@@ -12,6 +14,11 @@ int main() {
     printf("--------------------------------------\n");
     printf("Exercice 1: Memory oriented exercice\n");
     ret = ex_memory_oriented();
+#endif
+
+#ifdef CHARACTER_ORIENTED
+    printf("--------------------------------------\n");
+    ret = ex_character_oriented();
 #endif
 
     return ret;
