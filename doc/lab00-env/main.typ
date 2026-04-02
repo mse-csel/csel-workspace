@@ -31,7 +31,7 @@ Like all package, with `make <package-name>-menuconfig` command. So, for Linux k
 
 === How to generate a custom rootfs?
 First of all, select the type of filesystem you want to generate in `Filesystem images` section of `make menuconfig`. We can use an overlay to customise our rootfs.
-The overlay is a directory (inin the board folder) with the same structure as rootfs and it will merge with the generated rootfs. So, we can add files and directories in the overlay and they will be added to the final rootfs.
+The overlay is a directory (in the board folder) with the same structure as rootfs and it will merge with the generated rootfs. So, we can add files and directories in the overlay and they will be added to the final rootfs.
 
 
 === How to use the eMMC card instead of the SD card?
