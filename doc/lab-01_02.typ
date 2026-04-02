@@ -48,6 +48,8 @@
 #include "lab00-env/main.typ"
 #pagebreak()
 #include "lab01-module/main.typ"
+#pagebreak()
+#include "lab02-peripheral/main.typ"
 
 #pagebreak()
 = #i18n("appendix-title", lang: option.lang) <sec:appendix>
