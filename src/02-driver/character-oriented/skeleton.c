@@ -77,7 +77,7 @@ ssize_t skeleton_read(struct file* f, char* __user buf, size_t count, loff_t* of
 
     ssize_t len = min(BUFFER_SIZE - ((size_t)*off), count);
 
-    if (len <= 0) {
+    if (len > count) {
         pr_info("Cannot read data for length: %ld\n", len);
         return 0;
     }
@@ -100,7 +100,7 @@ ssize_t skeleton_write(struct file* f, const char* __user buf, size_t count, lof
 
     ssize_t len = min(BUFFER_SIZE - ((size_t)*off), count);
 
-    if (len <= 0) {
+    if (len < 0) {
         pr_info("Cannot write data for length: %ld\n", len);
         return 0;
     }
@@ -132,7 +132,7 @@ static int __init skeleton_init(void) {
     pr_info("My module loading...\n");
     pr_info("----------------------\n");
 
-    pr_info("Load exercice 2\n");
+    pr_info("Load exercice 3\n");
 
     // ret = register_chrdev_region(MKDEV(MY_MAJOR, 0), instances, "My module"); // register statically
 
