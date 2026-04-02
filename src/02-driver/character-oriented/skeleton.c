@@ -75,15 +75,12 @@ ssize_t skeleton_read(struct file* f, char* __user buf, size_t count, loff_t* of
 
     pr_info("Read file\n");
 
-    ssize_t len = min(BUFFER_SIZE - ((size_t)*off), count);
-
-    if (len > count) {
-        pr_info("Cannot read data for length: %ld\n", len);
-        return 0;
+    if (*off >= BUFFER_SIZE) {
+        return 0; // End of the file
     }
 
+    ssize_t len = min((size_t)(BUFFER_SIZE - *off), count);
 
-    /* read data from my_data->buffer to user buffer */
     if (copy_to_user(buf, f->private_data + *off, len)) {
         pr_info("Failed to copy to user space buffer\n");
         return -EFAULT;
@@ -91,27 +88,22 @@ ssize_t skeleton_read(struct file* f, char* __user buf, size_t count, loff_t* of
 
     *off += len;
     return len;
-
 }
 
 ssize_t skeleton_write(struct file* f, const char* __user buf, size_t count, loff_t* off) {
 
     pr_info("Write file\n");
 
-    ssize_t len = min(BUFFER_SIZE - ((size_t)*off), count);
-
-    if (len < 0) {
-        pr_info("Cannot write data for length: %ld\n", len);
-        return 0;
+    if (*off >= BUFFER_SIZE) {
+        return -ENOSPC; // No more space in buffer
     }
 
+    ssize_t len = min((size_t)(BUFFER_SIZE - *off), count);
 
-    /* read data from user buffer to my_data->buffer */
     if (copy_from_user(f->private_data + *off, buf, len)) {
         pr_info("Failed to copy from user space buffer\n");
         return -EFAULT;
     }
-
 
     *off += len;
     return len;
