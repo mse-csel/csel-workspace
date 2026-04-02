@@ -54,3 +54,4 @@ solutions/**/build
 boot-scripts/boot.cifs
 boot-scripts/boot.net
 
+doc/**/*.pdf
