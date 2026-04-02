@@ -10,7 +10,7 @@
 
 #define DATA_LENGTH 70
 
-static const char* data = "J'ai le chocolat qui est collé au palais, ducoup j'arrive pas a parlé\0";
+static const char* data = "I've got chocolate stuck to the roof of my mouth, so I can't speak\0";
 
 static char data_read[DATA_LENGTH] = {};
 
