@@ -5,7 +5,7 @@ In this laboratory, we see how to setup our environnement and how to have severa
 We also see how to debug our system with a remote debugger. That allow us to use debug in our code editor (vscode) a programm that run on the target.
 
 #figure(
-  image("./dev-environment.drawio.svg"),
+  image("./dev-environment.png"),
   caption: "Development environment schema"
 ) <fig:dev-env>
 

@@ -28,8 +28,7 @@ clean:
 
 install:
 	$(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(MODPATH) modules_install
-	install -d $(MODPATH)/etc/modprobe.d
-	install -m 0644 $(SOURCE).conf $(MODPATH)/etc/modprobe.d/$(SOURCE).conf
+	install -D -m 0644 $(SOURCE).conf $(MODPATH)/etc/modprobe.d/$(SOURCE).conf
 
 endif
 
