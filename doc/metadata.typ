@@ -1,3 +1,7 @@
+#import "@preview/hei-synd-thesis:0.4.0": *
+#import "/doc/resources/glossary.typ": *
+#import "@preview/grape-suite:3.1.0": exercise
+#import exercise: task, subtask
 //-------------------------------------
 // Document options
 //
