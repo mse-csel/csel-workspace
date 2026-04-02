@@ -8,25 +8,27 @@
 
 = Linux Kernel Programming
 
-In the First exercice, we learn how to access a register trought the `/dev/mem` interface. The purpose was to read the chip ID but we learn how to access in a specific region of the memory. How pages work and how to map them in the user space.
+In the First exercise, we learn how to access a register thought the `/dev/mem` interface. The purpose was to read the chip ID, but we learn how to access in a specific region of the memory. How pages work and how to map them in the user space.
 
-For exercice 2, we see how to create a character device driver. We learn how to create a device file, how to write a read and write functions and how to test it with `echo` and `cat`. Our module have a `MAJOR` dynamically allocated (but should be 511 with default nanopi installation) and only one minor. To verify the major number, we can use `cat /proc/devices` and look for our module name. To test the module, we need to create a character device file with the right major and minor number. 
+For exercise 2, we see how to create a character device driver. We learn how to create a device file, how to write a read and write functions and how to test it with `echo` and `cat`. Our module has a `MAJOR` dynamically allocated (but should be 511 with default nanopi installation) and only one minor. To verify the major number, we can use `cat /proc/devices` and look for our module name. To test the module, we need to create a character device file with the right major and minor number. 
 ```bash
 mknod /dev/test-device c 511 0 # Create character device 
 echo "lalalalalaalalalalallala" > /dev/test-device # Write to the device
 cat /dev/test-device # Read from the device
 ```
-Quite easy to extend to exercice 3 by adding the parameters as we did in the previous lab. This parameters define the number of minor available. 
+Quite easy to extend to exercise 3 by adding the parameters as we did in the previous lab. This parameters define the number of minor available. 
 
-Exercice 4 is the continuity, we had to create a tiny app that basically do the `echo` and `cat` for us. We can use the `open`, `write`, `read` and `close` system calls to interact with our device file. We still need to create the device file: 
+Exercise 4 is the continuity, we had to create a tiny app that basically do the `echo` and `cat` for us. We can use the `open`, `write`, `read` and `close` system calls to interact with our device file. We still need to create the device file: 
 ```bash
 mknod /dev/toto0 c 511 0
 ```
 
+The next step in exercise 5 is to create a sysfs entry for our module. Lot of theory, but once the theory is grasped, it's relatively straightforward to use the sysfs functions in our module.
 
+The sysfs class is useful when we are attribute oriented. It's easy to store attributes in files. The platform driver is useful when we are processes oriented. The misc device simplify the peripheral instantiation.
 
 == Adaptation for Zed environment
-For this lab we have to work with application and not with module. We have the same problem with clang for the LSP with Zed. To solve it, we include the linux header files and specify the path of sysroot. Like this, clang have all the dependencies that we need. And tadam, the wonderful envionment we had on previous lab is back!
+For this lab, we have to work with application and not with module. We have the same problem with clang for the LSP with Zed. To solve it, we include the Linux header files and specify the path of sysroot. Like this, clang have all the dependencies that we need. And tadam, the wonderful environment we had on previous lab is back!
 
 == Conclusion
-All the content of this is on #link("https://github.com/Klagarge/MSE-MA-CSEL/tree/main/src/02-driver")[src/02-driver]. It was pleasent to initially see how to manage a character device manually and step by step see how to do it with an easier methods. I personnaly like to start from the bottom. 
+All the content of this is on #link("https://github.com/Klagarge/MSE-MA-CSEL/tree/main/src/02-driver")[src/02-driver]. It was pleasant to initially see how to manage a character device manually and step by step see how to do it with an easier method. I personally like to start from the bottom. 
