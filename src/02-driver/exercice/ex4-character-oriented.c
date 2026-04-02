@@ -10,7 +10,7 @@
 
 #define DATA_LENGTH 70
 
-const static char* data = "J'ai le chocolat qui est collé au palais, ducoup j'arrive pas a parlé\0";
+static const char* data = "J'ai le chocolat qui est collé au palais, ducoup j'arrive pas a parlé\0";
 
 static char data_read[DATA_LENGTH] = {};
 
@@ -29,6 +29,8 @@ int ex_character_oriented(void) {
     }
 
     ret = write(fd, data, DATA_LENGTH);
+
+    fd = open(path, O_RDWR);
 
     if(ret < 0) {
         printf("Failed to write\n");
