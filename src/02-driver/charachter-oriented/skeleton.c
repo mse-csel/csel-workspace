@@ -85,7 +85,7 @@ ssize_t skeleton_read(struct file* f, char* __user buf, size_t count, loff_t* of
 
 
     /* read data from my_data->buffer to user buffer */
-    if (copy_to_user(buf, my_data->buffers + *off, len)) {
+    if (copy_to_user(buf, f->private_data + *off, len)) {
         pr_info("Failed to copy to user space buffer\n");
         return -EFAULT;
     }
@@ -109,7 +109,7 @@ ssize_t skeleton_write(struct file* f, const char* __user buf, size_t count, lof
 
 
     /* read data from user buffer to my_data->buffer */
-    if (copy_from_user(my_data->buffers + *off, buf, len)) {
+    if (copy_from_user(f->private_data + *off, buf, len)) {
         pr_info("Failed to copy from user space buffer\n");
         return -EFAULT;
     }
