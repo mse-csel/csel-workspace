@@ -75,7 +75,6 @@ ssize_t skeleton_read(struct file* f, char* __user buf, size_t count, loff_t* of
 
     pr_info("Read file\n");
 
-    struct my_device_data *my_data = (struct my_device_data *) f->private_data;
     ssize_t len = min(BUFFER_SIZE - ((size_t)*off), count);
 
     if (len <= 0) {
@@ -99,7 +98,6 @@ ssize_t skeleton_write(struct file* f, const char* __user buf, size_t count, lof
 
     pr_info("Write file\n");
 
-    struct my_device_data *my_data = (struct my_device_data *) f->private_data;
     ssize_t len = min(BUFFER_SIZE - ((size_t)*off), count);
 
     if (len <= 0) {
@@ -157,8 +155,9 @@ static int __init skeleton_init(void) {
     }
 
     // allocate the array of buffer
+    int i;
     devs.buffers = kzalloc(sizeof(char*) * instances, GFP_KERNEL);
-    for (int i = 0; i < instances; i++) {
+    for (i = 0; i < instances; i++) {
         devs.buffers[i] = kzalloc(BUFFER_SIZE, GFP_KERNEL);
     }
 
@@ -175,7 +174,8 @@ static void __exit skeleton_exit(void) {
     cdev_del(&devs.cdev);
     unregister_chrdev_region(devs.dev_t, instances);
 
-    for(int i=0; i < instances; i++) {
+    int i;
+    for(i=0; i < instances; i++) {
         kfree(devs.buffers[i]);
     }
     kfree(devs.buffers);
