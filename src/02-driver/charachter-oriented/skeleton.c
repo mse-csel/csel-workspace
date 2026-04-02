@@ -156,3 +156,13 @@ MODULE_AUTHOR("Fastium <fastium.pro@proton.me>");
 MODULE_AUTHOR("Klagarge <remi@heredero.ch>");
 MODULE_DESCRIPTION ("Module pilot charachter oriented");
 MODULE_LICENSE ("GPL");
+
+/*
+ * MAJOR can be find: cat /proc/device
+ *
+ * For testing with echo and cat:
+ *      - mknod /dev/test-device -c 42 0 (Create a charachter device file with the right Major and Minor)
+ *      - echo "lalalalalaalalalalallala" > /dev/test-device
+ *      - cat /dev/test-device
+ *
+ */
