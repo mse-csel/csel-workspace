@@ -1,4 +1,5 @@
 #include <linux/module.h>  // needed by all modules
+#include <linux/moduleparam.h>
 #include <linux/init.h>    // needed for macros
 #include <linux/kernel.h>  // needed for debugging
 #include <linux/fs.h>
@@ -8,6 +9,8 @@
 #include <linux/minmax.h>
 #include <stddef.h>
 #include <linux/uaccess.h>
+#include <linux/slab.h> // dynamic memory allocation
+
 
 // linux theory: https://linux-kernel-labs.github.io/refs/heads/master/labs/device_drivers.html
 
@@ -17,11 +20,15 @@
 
 #define BUFFER_SIZE 300
 
+// setup as argument the number of buffer available in the device
+static int instances = 3;
+module_param(instances, int, 0);
 
 struct my_device_data {
+    dev_t dev_t;
     struct cdev cdev;
     /* my data starts here */
-    char buffer[BUFFER_SIZE];
+    char** buffers;
 };
 
 struct my_device_data devs;
@@ -31,13 +38,28 @@ struct my_device_data devs;
 
 int skeleton_open(struct inode* i, struct file* f) {
 
-    pr_info("Open file\n");
+    pr_info("Open file \n major:%d\n minor:%d\n",
+            imajor(i),
+            iminor(i));
+
+    if (iminor(i) >= instances) {
+        return -EFAULT;
+    }
+
+    if ((f->f_mode & (FMODE_READ | FMODE_WRITE)) != 0) {
+        pr_info("skeleton : opened for reading & writing...\n");
+    } else if ((f->f_mode & FMODE_READ) != 0) {
+        pr_info("skeleton : opened for reading...\n");
+    } else if ((f->f_mode & FMODE_WRITE) != 0) {
+        pr_info("skeleton : opened for writing...\n");
+    }
 
     // Get the stuct of my data
     struct my_device_data *my_data = container_of(i->i_cdev, struct my_device_data, cdev);
 
     // point private data on driver data, here this is a char buffer
-    f->private_data = my_data;
+    // point on the right minor buffer
+    f->private_data = my_data->buffers[iminor(i)];
 
     return 0;
 }
@@ -63,7 +85,7 @@ ssize_t skeleton_read(struct file* f, char* __user buf, size_t count, loff_t* of
 
 
     /* read data from my_data->buffer to user buffer */
-    if (copy_to_user(buf, my_data->buffer + *off, len)) {
+    if (copy_to_user(buf, my_data->buffers + *off, len)) {
         pr_info("Failed to copy to user space buffer\n");
         return -EFAULT;
     }
@@ -87,7 +109,7 @@ ssize_t skeleton_write(struct file* f, const char* __user buf, size_t count, lof
 
 
     /* read data from user buffer to my_data->buffer */
-    if (copy_from_user(my_data->buffer + *off, buf, len)) {
+    if (copy_from_user(my_data->buffers + *off, buf, len)) {
         pr_info("Failed to copy from user space buffer\n");
         return -EFAULT;
     }
@@ -114,7 +136,9 @@ static int __init skeleton_init(void) {
 
     pr_info("Load exercice 2\n");
 
-    ret = register_chrdev_region(MKDEV(MY_MAJOR, 0), MY_MAX_MINORS, "My module");
+    // ret = register_chrdev_region(MKDEV(MY_MAJOR, 0), instances, "My module"); // register statically
+
+    ret = alloc_chrdev_region(&devs.dev_t, 0, instances, "mymodule"); //allocate major and minor
 
     if (ret != 0) {
         /* report error */
@@ -123,13 +147,19 @@ static int __init skeleton_init(void) {
     }
 
     /* initialize devs fields */
-    cdev_init(&devs.cdev, &skeleton_fops);
-    ret = cdev_add(&devs.cdev, MKDEV(MY_MAJOR, 0), 1);
+    cdev_init(&devs.cdev, &skeleton_fops); // initialize device with files operations
+    ret = cdev_add(&devs.cdev, devs.dev_t, instances); // notify kernel
 
     if (ret != 0) {
         /* report error */
         pr_info("cdev add error: %d\n", ret);
         return ret;
+    }
+
+    // allocate the array of buffer
+    devs.buffers = kzalloc(sizeof(char*) * instances, GFP_KERNEL);
+    for (int i = 0; i < instances; i++) {
+        devs.buffers[i] = kzalloc(BUFFER_SIZE, GFP_KERNEL);
     }
 
     pr_info("----------------------\n");
@@ -143,7 +173,12 @@ static void __exit skeleton_exit(void) {
     pr_info("----------------------\n");
 
     cdev_del(&devs.cdev);
-    unregister_chrdev_region(MKDEV(MY_MAJOR, 0), MY_MAX_MINORS);
+    unregister_chrdev_region(devs.dev_t, instances);
+
+    for(int i=0; i < instances; i++) {
+        kfree(devs.buffers[i]);
+    }
+    kfree(devs.buffers);
 
     pr_info("----------------------\n");
     pr_info("My module is unloaded\n");
