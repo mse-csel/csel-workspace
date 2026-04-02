@@ -1,9 +1,6 @@
 #import "/doc/metadata.typ": *
 
-#task(
-  [What does it mean the 4 values in ```/proc/sys/kernel/printk``` ?],
-  []
-)
+=== What does it mean the 4 values in ```/proc/sys/kernel/printk``` ?  <lab01:ex03>
 
 We can show what there is in:
 

@@ -52,7 +52,19 @@
 #pagebreak()
 = #i18n("appendix-title", lang: option.lang) <sec:appendix>
 == Exercices Lab 01
+
 #include "lab01-module/ex01.typ"
+#pagebreak()
+#include "lab01-module/ex02.typ"
+#include "lab01-module/ex03.typ"
+#pagebreak()
+#include "lab01-module/ex04.typ"
+#pagebreak()
+#include "lab01-module/ex05.typ"
+#include "lab01-module/ex06.typ"
+#pagebreak()
+#include "lab01-module/ex07.typ"
+#include "lab01-module/ex08.typ"
 
 //-------------------------------------
 // Glossary

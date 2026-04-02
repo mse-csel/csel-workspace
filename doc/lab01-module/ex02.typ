@@ -1,11 +1,9 @@
 #import "/doc/metadata.typ": *
 
-#task(
-  [Adapt the kernel module to receive parameters],
-  [
-    Adapt the kernel module of the previous exercise to receive two or three parameters of your choice. These parameters will be displayed in the console when the module is loaded.
-  ],
-)
+=== Adapt the kernel module to receive parameters <lab01:ex02>
+#colorbox(title: "Exercise", color: hei-blue)[
+  Adapt the kernel module of the previous exercise to receive two or three parameters of your choice. These parameters will be displayed in the console when the module is loaded.
+]
 
 ```bash
 |> modprobe mymodule
