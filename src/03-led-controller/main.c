@@ -33,13 +33,15 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/epoll.h>
+#include <sys/inotify.h>
+
+#include "setup.c"
 
 /*
  * status led - gpioa.10 --> gpio10
  * power led  - gpiol.10 --> gpio362
  */
-#define GPIO_EXPORT   "/sys/class/gpio/export"
-#define GPIO_UNEXPORT "/sys/class/gpio/unexport"
+
 #define GPIO_LED      "/sys/class/gpio/gpio10"
 #define LED           "10"
 
@@ -51,139 +53,70 @@
 #define BTN3          "3"
 
 
-static int open_led(char* gpio_path, char* pin)
+
+
+int main(void)
 {
-
-    // unexport pin out of sysfs (reinitialization)
-    int f = open(GPIO_UNEXPORT, O_WRONLY);
-    write(f, pin, strlen(pin));
-    close(f);
-
-    // export pin to sysfs
-    f = open(GPIO_EXPORT, O_WRONLY);
-    write(f, pin, strlen(pin));
-    close(f);
-
-    // config pin
-    char direction_path[100];
-    strcpy(direction_path, gpio_path);
-    strcat(direction_path, "/direction");
-
-    f = open(direction_path, O_WRONLY);
-    write(f, "out", 3);
-    close(f);
-
-    // open gpio value attribute
-    char value_path[100];
-    strcpy(value_path, gpio_path);
-    strcat(value_path, "/value");
-
-    f = open(value_path, O_RDWR);
-    return f;
-}
-
-static int open_btn(char* gpio_path, char* pin) {
-    int f = open(GPIO_UNEXPORT, O_WRONLY);
-    write(f, pin, strlen(pin));
-    close(f);
-
-    f = open(GPIO_EXPORT, O_WRONLY);
-    write(f, pin, strlen(pin));
-    close(f);
-
-    char direction_path[100];
-    strcpy(direction_path, gpio_path);
-    strcat(direction_path, "/direction");
-
-    f = open(direction_path, O_WRONLY);
-    write(f, "in", 2);
-    close(f);
-
-    char edge_path[100];
-    strcpy(edge_path, gpio_path);
-    strcat(edge_path, "/edge");
-    f = open(edge_path, O_WRONLY);
-    write(f, "both", 4); close(f);
-
-    char value_path[100];
-    strcpy(value_path, gpio_path);
-    strcat(value_path, "/value");
-
-    f = open(value_path, O_RDONLY);
-    return f;
-}
-
-int main(int argc, char* argv[])
-{
-    long duty   = 2;     // %
-    long period = 1000;  // ms
-    if (argc >= 2) period = atoi(argv[1]);
-    period *= 1000000;  // in ns
-
-    // compute duty period...
-    long p1 = period / 100 * duty;
-    long p2 = period - p1;
-
-    int led = open_led(GPIO_LED, LED);
-    pwrite(led, "1", sizeof("1"), 0);
+    printf("Starting Button 1 Test...\n");
 
     int btn1 = open_btn(GPIO_BTN1, BTN1);
-    int btn2 = open_btn(GPIO_BTN2, BTN2);
-    int btn3 = open_btn(GPIO_BTN3, BTN3);
-
-    // epoll
-    int epfd = epoll_create1(0);
-
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = btn1;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, btn1, &ev);
-    ev.data.fd = btn2;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, btn2, &ev);
-    ev.data.fd = btn3;
-    epoll_ctl(epfd, EPOLL_CTL_ADD, btn3, &ev);
-
-
-    struct timespec t1;
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-
-    int k = 0;
-    while (1) {
-        struct timespec t2;
-        clock_gettime(CLOCK_MONOTONIC, &t2);
-
-        long delta =
-            (t2.tv_sec - t1.tv_sec) * 1000000000 + (t2.tv_nsec - t1.tv_nsec);
-
-        int toggle = ((k == 0) && (delta >= p1)) | ((k == 1) && (delta >= p2));
-        if (toggle) {
-            t1 = t2;
-            k  = (k + 1) % 2;
-            if (k == 0)
-                pwrite(led, "1", sizeof("1"), 0);
-            else
-                pwrite(led, "0", sizeof("0"), 0);
-        }
-
-        struct epoll_event events[3];
-        int n = epoll_wait(epfd, events, 3, 0);
-        // printf("epoll_wait returned %d events\n", n);
-        char buf[2];
-        for (int i = 0; i < n; i++) {
-            // printf ("event=%d on fd=%d\n", events[i].events, events[i].data.fd);
-            if (events[i].data.fd == btn1) {
-                pread(btn1, buf, sizeof(buf), 0);
-                if (buf[0] == '1') {
-                    printf("btn1 activated\n");
-                }
-            } else if (events[i].data.fd == btn2) {
-                // printf("btn2 pressed\n");
-            } else if (events[i].data.fd == btn3) {
-                // printf("btn3 pressed\n");
-            }
-        }
-
+    if (btn1 < 0) {
+        perror("Failed to open button");
+        return 1;
     }
 
+    // 1. Create epoll instance
+    int epfd = epoll_create1(0);
+    if (epfd < 0) {
+        perror("Failed to create epoll");
+        return 1;
+    }
+
+    // 2. Add button to epoll
+    struct epoll_event ev;
+    // CRITICAL: Sysfs GPIOs use EPOLLPRI (priority data) and EPOLLERR, not EPOLLIN!
+    ev.events = EPOLLPRI | EPOLLERR | EPOLLET;
+    ev.data.fd = btn1;
+
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, btn1, &ev) < 0) {
+        perror("Failed to add btn1 to epoll");
+        return 1;
+    }
+
+    // 3. Dummy read to clear initial state before waiting
+    char buf[2];
+    pread(btn1, buf, sizeof(buf), 0);
+
+    printf("Waiting for button presses (CPU should be at 0%%)...\n");
+
+    // 4. Event loop
+    while (1) {
+        struct epoll_event events[1]; // We only care about 1 event for now
+
+        // Timeout is -1: Block infinitely until an event occurs!
+        int n = epoll_wait(epfd, events, 1, -1);
+
+        if (n < 0) {
+            perror("epoll_wait error");
+            break;
+        }
+
+        for (int i = 0; i < n; i++) {
+            if (events[i].data.fd == btn1) {
+                // Read the new value. pread uses offset 0 so we don't need lseek()
+                pread(btn1, buf, sizeof(buf), 0);
+
+                // Print the result. '1' or '0' depends on your hardware pull-up/down resistors
+                if (buf[0] == '1') {
+                    printf("Button 1 State: HIGH (1)\n");
+                } else {
+                    printf("Button 1 State: LOW (0)\n");
+                }
+            }
+        }
+    }
+
+    close(btn1);
+    close(epfd);
     return 0;
 }
