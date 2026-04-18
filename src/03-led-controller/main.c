@@ -24,12 +24,15 @@
  */
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/epoll.h>
 
 /*
  * status led - gpioa.10 --> gpio10
@@ -40,25 +43,73 @@
 #define GPIO_LED      "/sys/class/gpio/gpio10"
 #define LED           "10"
 
-static int open_led()
+#define GPIO_BTN1      "/sys/class/gpio/gpio0"
+#define BTN1          "0"
+#define GPIO_BTN2      "/sys/class/gpio/gpio2"
+#define BTN2          "2"
+#define GPIO_BTN3      "/sys/class/gpio/gpio3"
+#define BTN3          "3"
+
+
+static int open_led(char* gpio_path, char* pin)
 {
+
     // unexport pin out of sysfs (reinitialization)
     int f = open(GPIO_UNEXPORT, O_WRONLY);
-    write(f, LED, strlen(LED));
+    write(f, pin, strlen(pin));
     close(f);
 
     // export pin to sysfs
     f = open(GPIO_EXPORT, O_WRONLY);
-    write(f, LED, strlen(LED));
+    write(f, pin, strlen(pin));
     close(f);
 
     // config pin
-    f = open(GPIO_LED "/direction", O_WRONLY);
+    char direction_path[100];
+    strcpy(direction_path, gpio_path);
+    strcat(direction_path, "/direction");
+
+    f = open(direction_path, O_WRONLY);
     write(f, "out", 3);
     close(f);
 
     // open gpio value attribute
-    f = open(GPIO_LED "/value", O_RDWR);
+    char value_path[100];
+    strcpy(value_path, gpio_path);
+    strcat(value_path, "/value");
+
+    f = open(value_path, O_RDWR);
+    return f;
+}
+
+static int open_btn(char* gpio_path, char* pin) {
+    int f = open(GPIO_UNEXPORT, O_WRONLY);
+    write(f, pin, strlen(pin));
+    close(f);
+
+    f = open(GPIO_EXPORT, O_WRONLY);
+    write(f, pin, strlen(pin));
+    close(f);
+
+    char direction_path[100];
+    strcpy(direction_path, gpio_path);
+    strcat(direction_path, "/direction");
+
+    f = open(direction_path, O_WRONLY);
+    write(f, "in", 2);
+    close(f);
+
+    char edge_path[100];
+    strcpy(edge_path, gpio_path);
+    strcat(edge_path, "/edge");
+    f = open(edge_path, O_WRONLY);
+    write(f, "both", 4); close(f);
+
+    char value_path[100];
+    strcpy(value_path, gpio_path);
+    strcat(value_path, "/value");
+
+    f = open(value_path, O_RDONLY);
     return f;
 }
 
@@ -73,8 +124,25 @@ int main(int argc, char* argv[])
     long p1 = period / 100 * duty;
     long p2 = period - p1;
 
-    int led = open_led();
+    int led = open_led(GPIO_LED, LED);
     pwrite(led, "1", sizeof("1"), 0);
+
+    int btn1 = open_btn(GPIO_BTN1, BTN1);
+    int btn2 = open_btn(GPIO_BTN2, BTN2);
+    int btn3 = open_btn(GPIO_BTN3, BTN3);
+
+    // epoll
+    int epfd = epoll_create1(0);
+
+    struct epoll_event ev;
+    ev.events = EPOLLIN;
+    ev.data.fd = btn1;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, btn1, &ev);
+    ev.data.fd = btn2;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, btn2, &ev);
+    ev.data.fd = btn3;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, btn3, &ev);
+
 
     struct timespec t1;
     clock_gettime(CLOCK_MONOTONIC, &t1);
@@ -96,6 +164,25 @@ int main(int argc, char* argv[])
             else
                 pwrite(led, "0", sizeof("0"), 0);
         }
+
+        struct epoll_event events[3];
+        int n = epoll_wait(epfd, events, 3, 0);
+        // printf("epoll_wait returned %d events\n", n);
+        char buf[2];
+        for (int i = 0; i < n; i++) {
+            // printf ("event=%d on fd=%d\n", events[i].events, events[i].data.fd);
+            if (events[i].data.fd == btn1) {
+                pread(btn1, buf, sizeof(buf), 0);
+                if (buf[0] == '1') {
+                    printf("btn1 activated\n");
+                }
+            } else if (events[i].data.fd == btn2) {
+                // printf("btn2 pressed\n");
+            } else if (events[i].data.fd == btn3) {
+                // printf("btn3 pressed\n");
+            }
+        }
+
     }
 
     return 0;
