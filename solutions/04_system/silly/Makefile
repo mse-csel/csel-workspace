@@ -1,5 +1,20 @@
-EXE=app
-SRCS=$(wildcard *.c)
+# Makefile for CMake project with intelligent configuration
 
-# Include the standard application Makefile for the CSEL1 labs
-include ./appl.mk
+
+# Default target
+all: build/build.ninja
+	cmake --build build
+
+# Create build directory and generate build files if needed
+build/build.ninja : CMakeLists.txt
+	cmake -S . -B build -G "Ninja"
+
+# Clean build directory
+clean:
+	rm -rf build
+
+# Rebuild from scratch
+rebuild: clean all
+
+# Phony targets (targets that don't represent files)
+.PHONY: all clean rebuild
