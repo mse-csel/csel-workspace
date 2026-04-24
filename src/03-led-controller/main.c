@@ -54,12 +54,13 @@ int main(void)
         return 1;
     }
 
-    // 2. Add button to epoll
+    // Add buttons to epoll
     struct epoll_event ev[NBR_BTN];
-    // CRITICAL: Sysfs GPIOs use EPOLLPRI (priority data) and EPOLLERR, not EPOLLIN!
-
+    // EPOLLIN is working well as EPOLLPRI (which is more used for priority data)
+    // EPOLLERR is used to detect if there is an error
+    // EPOLLET is for edge triggered mode (non-blocking)
     for(int i=0; i<NBR_BTN; i++) {
-        ev[i].events = EPOLLPRI | EPOLLERR | EPOLLET;
+        ev[i].events = EPOLLIN | EPOLLERR | EPOLLET;
         ev[i].data.fd = btn[i];
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, btn[i], &ev[i]) < 0) {
             perror("Failed to add button to epoll");
@@ -77,7 +78,7 @@ int main(void)
 
     // Event main loop
     while (1) {
-        struct epoll_event events[NBR_BTN]; // We only care about 1 event for now
+        struct epoll_event events[NBR_BTN];
 
         // Timeout is -1: Block infinitely until an event occurs!
         int n = epoll_wait(epfd, events, 1, -1);
