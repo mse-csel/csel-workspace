@@ -11,7 +11,7 @@
 #define GPIO_EXPORT   "/sys/class/gpio/export"
 #define GPIO_UNEXPORT "/sys/class/gpio/unexport"
 
-static int open_led(char* gpio_path, char* pin) {
+static int open_led(const char* gpio_path, const char* pin) {
 
     // unexport pin out of sysfs (reinitialization)
     int f = open(GPIO_UNEXPORT, O_WRONLY);
@@ -41,7 +41,7 @@ static int open_led(char* gpio_path, char* pin) {
     return f;
 }
 
-static int open_btn(char* gpio_path, char* pin) {
+static int open_btn(const char* gpio_path, const char* pin) {
     int f = open(GPIO_UNEXPORT, O_WRONLY);
     write(f, pin, strlen(pin));
     close(f);
