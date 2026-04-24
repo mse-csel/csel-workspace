@@ -37,3 +37,24 @@ sync-images.sh
 ```
 
 You can now "burn" the Compact Flash using [BalenaEtcher](https://www.balena.io/etcher/)
+
+## Changing boot env
+
+### CIFS
+
+In the bootloader:
+```bash
+setenv boot_scripts boot.cifs
+saveenv
+boot
+```
+
+If the workspace isn't mount control if there is the line in `/etc/fstab`:
+```text
+//192.168.53.4/workspace /workspace cifs vers=1.0,username=root,password=toor,port=1445,noserverino
+```
+
+If the line isn't there, add it and mount:
+```bash
+mount -a
+```
