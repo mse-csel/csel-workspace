@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <sys/inotify.h>
+#include <pthread.h>
 
 #include "setup.c"
 
@@ -34,9 +35,7 @@
 const char* GPIO_BTN[NBR_BTN] = {GPIO_BTN1, GPIO_BTN2, GPIO_BTN3};
 const char* BTN[NBR_BTN] =  {BTN1, BTN2, BTN3};
 
-int main(void)
-{
-
+void* btn_thread(void* arg) {
     // Open all button with the right flags
     int btn[NBR_BTN] = {0};
     for(int i=0; i<NBR_BTN; i++) {
@@ -111,5 +110,52 @@ int main(void)
         close(btn[i]);
     }
     close(epfd);
+}
+
+int main(int argc, char* argv[])
+{
+    long duty   = 2;     // %
+    long period = 1000;  // ms
+    if (argc >= 2) period = atoi(argv[1]);
+    period *= 1000000;  // in ns
+
+    // compute duty period...
+    long p1 = period / 100 * duty;
+    long p2 = period - p1;
+
+    int led = open_led(GPIO_LED, LED);
+    pwrite(led, "1", sizeof("1"), 0);
+
+    struct timespec t1;
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+
+    // Setup button thread
+    pthread_t btn_thread_inst;
+    pthread_create(&btn_thread_inst, NULL, btn_thread, NULL);
+
+
+    int k = 0;
+    while (1) {
+        struct timespec t2;
+        clock_gettime(CLOCK_MONOTONIC, &t2);
+
+        long delta =
+            (t2.tv_sec - t1.tv_sec) * 1000000000 + (t2.tv_nsec - t1.tv_nsec);
+
+        int toggle = ((k == 0) && (delta >= p1)) | ((k == 1) && (delta >= p2));
+        if (toggle) {
+            t1 = t2;
+            k  = (k + 1) % 2;
+            if (k == 0)
+                pwrite(led, "1", sizeof("1"), 0);
+            else
+                pwrite(led, "0", sizeof("0"), 0);
+        }
+
+    }
+
+    pthread_join(btn_thread_inst, NULL);
+
+
     return 0;
 }
