@@ -42,7 +42,6 @@ void* btn_thread(void* arg) {
         btn[i] = open_btn(GPIO_BTN[i], BTN[i]);
         if (btn[i] < 0) {
             perror("Failed to open button");
-            return 1;
         }
     }
 
@@ -50,7 +49,6 @@ void* btn_thread(void* arg) {
     int epfd = epoll_create1(0);
     if (epfd < 0) {
         perror("Failed to create epoll");
-        return 1;
     }
 
     // Add buttons to epoll
@@ -63,7 +61,6 @@ void* btn_thread(void* arg) {
         ev[i].data.fd = btn[i];
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, btn[i], &ev[i]) < 0) {
             perror("Failed to add button to epoll");
-            return 1;
         }
     }
 
@@ -88,20 +85,22 @@ void* btn_thread(void* arg) {
         }
 
         for (int i = 0; i < n; i++) {
-            for (int j = 0; j < NBR_BTN; j++) {
-                if (events[i].data.fd == btn[j]) {
-
-                    // Read the new value. pread uses offset 0 so we don't need lseek()
-                    pread(btn[j], buf, sizeof(buf), 0);
-
-                    // Print the result. '1' or '0' depends on your hardware pull-up/down resistors
-                    if (buf[0] == '1') {
-                        printf("Button %d State: HIGH (1)\n", j+1);
-                    } else {
-                        printf("Button %d State: LOW (0)\n", j+1);
-                    }
+            // read btn file
+            pread(btn[i], buf, sizeof(buf), 0);
+            if (events[i].data.fd == btn[0]) {
+                if (buf[0] == '1') {
+                    printf("Decrease led frequency");
                 }
 
+            } else if (events[i].data.fd == btn[1]) {
+                if (buf[0] == '1') {
+                    printf("Reset led frequency");
+                }
+
+            } else if (events[i].data.fd == btn[2]) {
+                if (buf[0] == '1') {
+                    printf("Increase led frequency");
+                }
             }
         }
     }
