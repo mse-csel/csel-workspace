@@ -58,3 +58,11 @@ If the line isn't there, add it and mount:
 ```bash
 mount -a
 ```
+
+### NET
+In the bootloader:
+```bash
+setenv boot_scripts boot.net
+saveenv
+boot
+```
