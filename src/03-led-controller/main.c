@@ -86,20 +86,21 @@ void* btn_thread(void* arg) {
 
         for (int i = 0; i < n; i++) {
             // read btn file
-            pread(btn[i], buf, sizeof(buf), 0);
+            pread(events[i].data.fd, buf, sizeof(buf), 0);
+
             if (events[i].data.fd == btn[0]) {
                 if (buf[0] == '1') {
-                    printf("Decrease led frequency");
+                    printf("Decrease led frequency\n");
                 }
 
             } else if (events[i].data.fd == btn[1]) {
                 if (buf[0] == '1') {
-                    printf("Reset led frequency");
+                    printf("Reset led frequency\n");
                 }
 
             } else if (events[i].data.fd == btn[2]) {
                 if (buf[0] == '1') {
-                    printf("Increase led frequency");
+                    printf("Increase led frequency\n");
                 }
             }
         }
